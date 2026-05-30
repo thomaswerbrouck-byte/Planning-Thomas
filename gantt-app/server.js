@@ -203,11 +203,32 @@ function broadcastUsers(projectId) {
 
 /* ── Diagnostic ── */
 app.get('/api/status', async (req, res) => {
+  const SB_URL = process.env.SUPABASE_URL;
+  const SB_KEY = process.env.SUPABASE_KEY;
+  let testResult = 'non testé';
+  let testError  = null;
+
+  if (SB_URL && SB_KEY) {
+    try {
+      /* Test lecture directe */
+      const r = await fetch(`${SB_URL}/rest/v1/kv_store?select=key&limit=1`, {
+        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }
+      });
+      const body = await r.text();
+      testResult = `HTTP ${r.status} → ${body.slice(0, 200)}`;
+    } catch(e) {
+      testError = e.message;
+    }
+  }
+
   const projects = await db.listProjects();
   res.json({
     storage: 'supabase',
-    supabase_url: process.env.SUPABASE_URL ? process.env.SUPABASE_URL.replace(/\/\/.*@/, '//***@') : 'NON CONFIGURÉ',
-    projects: projects.map(p => ({ id: p.id, name: p.name, updated_at: p.updated_at })),
+    supabase_url: SB_URL || 'NON CONFIGURÉ',
+    supabase_key_prefix: SB_KEY ? SB_KEY.slice(0, 20) + '...' : 'NON CONFIGURÉ',
+    supabase_test: testResult,
+    supabase_test_error: testError,
+    projects: projects.map(p => ({ id: p.id, name: p.name })),
     node_env: process.env.NODE_ENV,
     uptime_s: Math.floor(process.uptime())
   });
