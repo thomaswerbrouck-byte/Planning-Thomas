@@ -64,6 +64,18 @@ body {
   margin-bottom: 12px;
 }
 .login-card input:focus { border-color: var(--blue); }
+.login-card select {
+  width: 100%; padding: 11px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 8px; font-size: .95rem;
+  font-family: inherit; background: white;
+  color: var(--gray-900);
+  transition: border-color .2s;
+  margin-bottom: 12px;
+  cursor: pointer;
+  appearance: auto;
+}
+.login-card select:focus { border-color: var(--blue); outline: none; }
 .login-card button {
   width: 100%; padding: 11px;
   background: var(--blue); color: white;
