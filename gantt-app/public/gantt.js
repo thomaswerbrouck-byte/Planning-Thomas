@@ -375,20 +375,36 @@ function buildRow(p, total, isSub, parentId, lefts) {
   return h;
 }
 
-/* ─ Mobile — vue Gantt trimestrielle, lecture seule ─── */
-var _mobileTrim = -1; // -1 = trimestre courant
+/* ─ Mobile — vue Gantt mois sélectionnables, lecture seule ─── */
+var _moisSelectionnes = null; // null = trimestre courant par défaut
+
+function _initMoisDefaut() {
+  if (_moisSelectionnes) return;
+  const t = Math.floor(new Date().getMonth() / 3) * 3;
+  _moisSelectionnes = [t, t+1, t+2];
+}
+
+window._toggleMoisMobile = idx => {
+  _initMoisDefaut();
+  const i = _moisSelectionnes.indexOf(idx);
+  if (i >= 0) {
+    if (_moisSelectionnes.length === 1) return; // garder au moins 1
+    _moisSelectionnes.splice(i, 1);
+  } else {
+    _moisSelectionnes.push(idx);
+    _moisSelectionnes.sort((a,b) => a-b);
+  }
+  renderMobile();
+};
 
 function renderMobile() {
-  const today = new Date();
-  if (_mobileTrim < 0) _mobileTrim = Math.floor(today.getMonth() / 3);
-  const trim = Math.max(0, Math.min(3, _mobileTrim));
-
-  const TNOMS = ['T1 — Jan · Fév · Mar', 'T2 — Avr · Mai · Juin',
-                 'T3 — Juil · Août · Sep', 'T4 — Oct · Nov · Déc'];
+  _initMoisDefaut();
   const MNOMS3 = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-  const mStart = trim * 3, mEnd = mStart + 2;
 
-  const joursM = jours.filter(j => j.moisIdx >= mStart && j.moisIdx <= mEnd);
+  /* Jours des mois sélectionnés (dans l'ordre) */
+  const moisTriés = [..._moisSelectionnes].sort((a,b) => a-b);
+
+  const joursM = jours.filter(j => moisTriés.includes(j.moisIdx));
   if (!joursM.length) {
     document.getElementById('mobile-view').innerHTML = '<div style="padding:30px;text-align:center">Aucun jour</div>';
     return;
@@ -396,9 +412,8 @@ function renderMobile() {
   const total  = joursM.length;
   const idxDeb = idxDate(joursM[0].clef);
 
-  /* Une seule colonne figée : nom + point couleur, tap → fiche */
-  const COL_W  = 130; // px colonne nom
-  const WM     = 6;   // px par jour (trimestre ≈ 91j × 6 = 546px)
+  const COL_W  = 130;
+  const WM     = 6;
   const tableW = COL_W + total * WM;
 
   /* Groupes mois pour l'en-tête */
@@ -412,14 +427,21 @@ function renderMobile() {
   const ordered = projFiltresTries();
   const rowH = 32, barH = 18, barTop = 7;
 
-  /* Navigation trimestre */
-  let h = `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--navy);color:white;flex-shrink:0">
-    <button onclick="_mobileTrimPrev()" style="background:rgba(255,255,255,.18);border:none;color:white;border-radius:6px;padding:5px 16px;font-size:20px;cursor:pointer;font-family:inherit;line-height:1">‹</button>
-    <div style="text-align:center">
-      <div style="font-size:.85rem;font-weight:700">${TNOMS[trim]}</div>
-      <div style="font-size:.7rem;opacity:.6;margin-top:1px">${ANNEE} — appuyer sur une ligne pour les détails</div>
-    </div>
-    <button onclick="_mobileTrimNext()" style="background:rgba(255,255,255,.18);border:none;color:white;border-radius:6px;padding:5px 16px;font-size:20px;cursor:pointer;font-family:inherit;line-height:1">›</button>
+  /* Sélecteur de mois */
+  let h = `<div style="background:#0f1b3d;flex-shrink:0;padding:8px 10px 6px">
+    <div style="font-size:.65rem;color:rgba(255,255,255,.45);font-weight:700;letter-spacing:.08em;margin-bottom:5px;text-transform:uppercase">Mois affichés — ${ANNEE}</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap">`;
+  for (let m = 0; m < 12; m++) {
+    const sel = _moisSelectionnes.includes(m);
+    h += `<button onclick="_toggleMoisMobile(${m})"
+      style="border:none;border-radius:5px;padding:4px 7px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .1s;
+             background:${sel ? 'var(--blue)' : 'rgba(255,255,255,.1)'};
+             color:${sel ? 'white' : 'rgba(255,255,255,.5)'}">
+      ${MNOMS3[m]}
+    </button>`;
+  }
+  h += `</div>
+    <div style="font-size:.63rem;color:rgba(255,255,255,.3);margin-top:5px">Appuyer sur une ligne pour voir les détails</div>
   </div>`;
 
   /* Tableau scrollable horizontalement */
@@ -554,14 +576,6 @@ window._mobileDetail = id => {
     <div class="m-actions"><button class="btn btn-primary" onclick="fermerModal()">Fermer</button></div>`);
 };
 
-window._mobileTrimPrev = () => {
-  _mobileTrim = Math.max(0, (_mobileTrim < 0 ? Math.floor(new Date().getMonth()/3) : _mobileTrim) - 1);
-  renderMobile();
-};
-window._mobileTrimNext = () => {
-  _mobileTrim = Math.min(3, (_mobileTrim < 0 ? Math.floor(new Date().getMonth()/3) : _mobileTrim) + 1);
-  renderMobile();
-};
 
 /* ══════════════════════════════════════════════════════
    DRAG — barres
