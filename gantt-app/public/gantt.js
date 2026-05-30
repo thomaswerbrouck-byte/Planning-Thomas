@@ -375,19 +375,20 @@ function buildRow(p, total, isSub, parentId, lefts) {
   return h;
 }
 
-/* ─ Mobile — vue Gantt par mois, lecture seule ──────── */
-var _mobileMois = -1; // -1 = mois courant
+/* ─ Mobile — vue Gantt trimestrielle, lecture seule ─── */
+var _mobileTrim = -1; // -1 = trimestre courant
 
 function renderMobile() {
   const today = new Date();
-  if (_mobileMois < 0) _mobileMois = today.getMonth();
-  const mois = Math.max(0, Math.min(11, _mobileMois));
+  if (_mobileTrim < 0) _mobileTrim = Math.floor(today.getMonth() / 3);
+  const trim = Math.max(0, Math.min(3, _mobileTrim));
 
-  const MNOMS = ['Janvier','Février','Mars','Avril','Mai','Juin',
-                 'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const TNOMS = ['T1 — Jan · Fév · Mar', 'T2 — Avr · Mai · Juin',
+                 'T3 — Juil · Août · Sep', 'T4 — Oct · Nov · Déc'];
+  const MNOMS3 = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const mStart = trim * 3, mEnd = mStart + 2;
 
-  /* Jours du mois */
-  const joursM = jours.filter(j => j.moisIdx === mois);
+  const joursM = jours.filter(j => j.moisIdx >= mStart && j.moisIdx <= mEnd);
   if (!joursM.length) {
     document.getElementById('mobile-view').innerHTML = '<div style="padding:30px;text-align:center">Aucun jour</div>';
     return;
@@ -395,95 +396,98 @@ function renderMobile() {
   const total  = joursM.length;
   const idxDeb = idxDate(joursM[0].clef);
 
-  /* Colonnes fixes réduites */
-  const COLS = [
-    { key: 'nom',  label: 'Opération', width: 120 },
-    { key: 'etat', label: 'État',      width: 62  },
-  ];
-  const WM       = 10; // px par jour — bien visible
-  const frozenPx = COLS.reduce((s, c) => s + c.width, 0);
-  const tableW   = frozenPx + total * WM;
+  /* Une seule colonne figée : nom + point couleur, tap → fiche */
+  const COL_W  = 130; // px colonne nom
+  const WM     = 6;   // px par jour (trimestre ≈ 91j × 6 = 546px)
+  const tableW = COL_W + total * WM;
+
+  /* Groupes mois pour l'en-tête */
+  let mG = [], curM = -1, cnt = 0;
+  for (const j of joursM) {
+    if (j.moisIdx !== curM) { if (cnt) mG.push({ nom: MNOMS3[curM], count: cnt }); curM = j.moisIdx; cnt = 1; }
+    else cnt++;
+  }
+  if (cnt) mG.push({ nom: MNOMS3[curM], count: cnt });
 
   const ordered = projFiltresTries();
-  const rowH = 30, barH = 17, barTop = 6;
+  const rowH = 32, barH = 18, barTop = 7;
 
-  /* Barre de navigation */
-  let h = `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--navy);color:white;flex-shrink:0">
-    <button onclick="_mobileMoisPrev()" style="background:rgba(255,255,255,.18);border:none;color:white;border-radius:6px;padding:4px 14px;font-size:20px;cursor:pointer;font-family:inherit;line-height:1">‹</button>
-    <span style="font-size:.85rem;font-weight:600">${MNOMS[mois]} ${ANNEE}</span>
-    <button onclick="_mobileMoisNext()" style="background:rgba(255,255,255,.18);border:none;color:white;border-radius:6px;padding:4px 14px;font-size:20px;cursor:pointer;font-family:inherit;line-height:1">›</button>
+  /* Navigation trimestre */
+  let h = `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--navy);color:white;flex-shrink:0">
+    <button onclick="_mobileTrimPrev()" style="background:rgba(255,255,255,.18);border:none;color:white;border-radius:6px;padding:5px 16px;font-size:20px;cursor:pointer;font-family:inherit;line-height:1">‹</button>
+    <div style="text-align:center">
+      <div style="font-size:.85rem;font-weight:700">${TNOMS[trim]}</div>
+      <div style="font-size:.7rem;opacity:.6;margin-top:1px">${ANNEE} — appuyer sur une ligne pour les détails</div>
+    </div>
+    <button onclick="_mobileTrimNext()" style="background:rgba(255,255,255,.18);border:none;color:white;border-radius:6px;padding:5px 16px;font-size:20px;cursor:pointer;font-family:inherit;line-height:1">›</button>
   </div>`;
 
-  /* Tableau — scroll horizontal naturel, pas de zoom */
+  /* Tableau scrollable horizontalement */
   h += `<div style="overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1">
-  <table style="border-collapse:collapse;table-layout:fixed;width:${tableW}px"><colgroup>`;
-
-  for (const c of COLS) h += `<col style="width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`;
+  <table style="border-collapse:collapse;table-layout:fixed;width:${tableW}px"><colgroup>
+    <col style="width:${COL_W}px;min-width:${COL_W}px;max-width:${COL_W}px">`;
   for (let i = 0; i < total; i++) h += `<col style="width:${WM}px;min-width:${WM}px">`;
   h += `</colgroup><thead>`;
 
-  /* En-tête : noms colonnes + numéros de jours */
-  h += `<tr style="height:14px">`;
-  let leftAcc = 0;
-  for (const c of COLS) {
-    h += `<td style="position:sticky;top:0;left:${leftAcc}px;z-index:40;background:#1e3a8a;color:white;font-size:8px;font-weight:700;text-align:center;border:1px solid rgba(255,255,255,.15);vertical-align:middle;padding:2px">${c.label}</td>`;
-    leftAcc += c.width;
-  }
+  /* Ligne mois */
+  h += `<tr style="height:15px">
+    <td rowspan="2" style="position:sticky;top:0;left:0;z-index:40;background:#1e3a8a;color:white;font-size:9px;font-weight:700;text-align:center;border:1px solid rgba(255,255,255,.15);vertical-align:middle;padding:2px">Opération</td>`;
+  for (const mg of mG)
+    h += `<td colspan="${mg.count}" style="position:sticky;top:0;z-index:20;background:#1e3a8a;color:white;font-size:8px;font-weight:700;text-align:center;border:0.5px solid rgba(255,255,255,.12);letter-spacing:.05em">${mg.nom}</td>`;
+  h += `</tr>`;
+
+  /* Ligne jours */
+  h += `<tr style="height:13px">`;
   for (const j of joursM) {
     const isTod = j.clef === todayStr;
-    const bg = isTod ? '#fef9c3' : j.wk ? '#eef2ff' : '#1e3a8a';
-    const fc = isTod ? '#92400e' : j.wk ? '#818cf8' : 'rgba(255,255,255,.85)';
-    h += `<td style="position:sticky;top:0;z-index:20;background:${bg};color:${fc};font-size:7px;text-align:center;border:0.5px solid rgba(255,255,255,.15);padding:1px 0;font-weight:${isTod?700:400}">${j.num}</td>`;
+    const bg = isTod ? '#fef9c3' : j.wk ? '#c7d2fe' : '#2d4fa0';
+    const fc = isTod ? '#92400e' : j.wk ? '#3730a3' : 'rgba(255,255,255,.8)';
+    h += `<td style="position:sticky;top:15px;z-index:20;background:${bg};color:${fc};font-size:6.5px;text-align:center;border:0.5px solid rgba(255,255,255,.1);padding:0;font-weight:${isTod?700:400}">${j.num}</td>`;
   }
   h += `</tr></thead><tbody>`;
 
   for (const p of ordered) {
-    h += _buildMobileRow(p, joursM, total, WM, idxDeb, rowH, barH, barTop, false, COLS);
+    h += _buildMobileRow(p, joursM, total, WM, idxDeb, rowH, barH, barTop, false, COL_W);
     if (p.soustaches?.length && !collapsed[p.id]) {
       for (const s of p.soustaches) {
         if (matchFiltres(s))
-          h += _buildMobileRow(s, joursM, total, WM, idxDeb, 24, 13, 5, true, COLS);
+          h += _buildMobileRow(s, joursM, total, WM, idxDeb, 25, 13, 6, true, COL_W);
       }
     }
   }
 
   h += `</tbody></table></div>`;
 
-  const el = document.getElementById('mobile-view');
-  el.innerHTML = h;
+  document.getElementById('mobile-view').innerHTML = h;
 }
 
-function _buildMobileRow(p, joursM, total, WM, idxDeb, rowH, barH, barTop, isSub, COLS) {
+function _buildMobileRow(p, joursM, total, WM, idxDeb, rowH, barH, barTop, isSub, COL_W) {
   const col   = getColor(p), ec = etatColor(p.etat);
   const rowBg = isSub ? '#f0f9ff' : 'white';
-  const bord  = isSub ? 'border-left:2px solid #38bdf8;' : '';
+  const bord  = isSub ? 'border-left:3px solid #38bdf8;' : '';
+  const parts = p.debut.split('-');
+  const lblDate = parts[2] + '/' + parts[1]; // JJ/MM
 
-  let h = `<tr>`;
-  let leftAcc = 0;
-  for (const c of COLS) {
-    h += `<td style="position:sticky;left:${leftAcc}px;z-index:10;background:${rowBg};${bord}width:${c.width}px;max-width:${c.width}px;height:${rowH}px;border:0.5px solid #e2e8f0;padding:2px 4px;vertical-align:middle;overflow:hidden">`;
-    if (c.key === 'nom') {
-      h += `<div style="display:flex;align-items:center;gap:3px;overflow:hidden">
+  /* Colonne nom — tap ouvre la fiche */
+  let h = `<tr onclick="_mobileDetail('${p.id}')" style="cursor:pointer">
+    <td style="position:sticky;left:0;z-index:10;background:${rowBg};${bord}width:${COL_W}px;max-width:${COL_W}px;height:${rowH}px;border:0.5px solid #e2e8f0;padding:3px 5px;vertical-align:middle;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:4px;overflow:hidden">
         ${isSub
-          ? `<span style="color:#38bdf8;font-size:10px;flex-shrink:0">↳</span>`
-          : `<span style="width:9px;height:9px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`}
-        <span style="font-size:${isSub?8:9}px;font-weight:${isSub?400:600};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#1e293b">${esc(p.nom)}</span>
-      </div>`;
-    } else if (c.key === 'etat') {
-      h += `<span style="font-size:8px;font-weight:600;color:${ec};white-space:nowrap;overflow:hidden;display:block;text-overflow:ellipsis">${esc(p.etat||'À venir')}</span>`;
-    }
-    h += `</td>`;
-    leftAcc += c.width;
-  }
+          ? `<span style="color:#38bdf8;font-size:11px;flex-shrink:0">↳</span>`
+          : `<span style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0"></span>`}
+        <span style="font-size:${isSub?8:9}px;font-weight:${isSub?400:600};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#1e293b;flex:1">${esc(p.nom)}</span>
+        <span style="font-size:7px;color:${ec};font-weight:600;flex-shrink:0">${esc(p.etat||'').slice(0,2)}</span>
+      </div>
+    </td>`;
 
-  /* Cellule barre — position:relative obligatoire pour les barres absolues */
+  /* Cellule barre */
   h += `<td colspan="${total}" style="position:relative;padding:0;height:${rowH}px;border-bottom:0.5px solid #e2e8f0;overflow:hidden;background:${rowBg}">`;
 
   /* Fond weekends + aujourd'hui */
   let off = 0;
   for (const j of joursM) {
-    if (j.wk)            h += `<div style="position:absolute;inset:0 auto 0 ${off*WM}px;width:${WM}px;background:#eef2ff;pointer-events:none"></div>`;
-    if (j.clef===todayStr) h += `<div style="position:absolute;inset:0 auto 0 ${off*WM}px;width:${WM}px;background:rgba(254,240,138,.55);border-left:1.5px solid #fbbf24;pointer-events:none;z-index:1"></div>`;
+    if (j.wk)              h += `<div style="position:absolute;top:0;bottom:0;left:${off*WM}px;width:${WM}px;background:#eef2ff;pointer-events:none"></div>`;
+    if (j.clef===todayStr) h += `<div style="position:absolute;top:0;bottom:0;left:${off*WM}px;width:${WM}px;background:rgba(254,240,138,.55);border-left:1.5px solid #fbbf24;pointer-events:none;z-index:1"></div>`;
     off++;
   }
 
@@ -496,12 +500,19 @@ function _buildMobileRow(p, joursM, total, WM, idxDeb, rowH, barH, barTop, isSub
   if (bSR <= bER && p.fin >= joursM[0].clef && p.debut <= joursM[joursM.length-1].clef) {
     const bLeft  = bSR * WM;
     const bWidth = (bER - bSR + 1) * WM;
+
+    /* Date de début à gauche de la barre */
+    if (bLeft > 2)
+      h += `<div style="position:absolute;top:50%;transform:translateY(-50%);right:calc(100% - ${bLeft}px + 2px);font-size:7px;font-weight:700;color:var(--gray-500);white-space:nowrap;pointer-events:none;z-index:4">${lblDate}</div>`;
+
+    /* Barre colorée */
     h += `<div style="position:absolute;top:${barTop}px;left:${bLeft}px;height:${barH}px;width:${bWidth}px;background:${col};border-radius:${isSub?2:4}px;z-index:3;box-shadow:0 1px 4px ${hexRgba(col,.35)}">
-      <div style="position:absolute;inset:0 0 auto 0;height:45%;background:rgba(255,255,255,.22);border-radius:inherit;pointer-events:none"></div>
+      <div style="position:absolute;top:0;left:0;right:0;height:45%;background:rgba(255,255,255,.22);border-radius:inherit;pointer-events:none"></div>
     </div>`;
-    /* Label à droite de la barre si de la place */
-    if (bLeft + bWidth + 4 < total * WM)
-      h += `<div style="position:absolute;top:0;bottom:0;left:${bLeft+bWidth+4}px;display:flex;align-items:center;z-index:4;pointer-events:none">
+
+    /* Nom à droite de la barre */
+    if (bLeft + bWidth + 3 < total * WM)
+      h += `<div style="position:absolute;top:0;bottom:0;left:${bLeft+bWidth+3}px;display:flex;align-items:center;z-index:4;pointer-events:none">
         <span style="font-size:7.5px;color:#374151;white-space:nowrap;font-weight:500">${esc(p.nom)}</span>
       </div>`;
   }
@@ -510,12 +521,45 @@ function _buildMobileRow(p, joursM, total, WM, idxDeb, rowH, barH, barTop, isSub
   return h;
 }
 
-window._mobileMoisPrev = () => {
-  _mobileMois = Math.max(0, (_mobileMois < 0 ? new Date().getMonth() : _mobileMois) - 1);
+/* Fiche détail — tap sur une ligne */
+window._mobileDetail = id => {
+  const p = getById(id); if (!p) return;
+  const col = getColor(p), ec = etatColor(p.etat);
+  const dD = p.debut.split('-').reverse().join('/');
+  const dF = p.fin  .split('-').reverse().join('/');
+  ouvrirModal(`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <span style="width:14px;height:14px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>
+      <h3 style="margin:0;font-size:1rem;flex:1">${esc(p.nom)}</h3>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.85rem">
+      <div><span style="color:var(--gray-500);font-size:.75rem;display:block">Association</span><strong>${esc(p.client)||'—'}</strong></div>
+      <div><span style="color:var(--gray-500);font-size:.75rem;display:block">Attribution</span><strong style="color:${col}">${esc(p.tech)}</strong></div>
+      <div><span style="color:var(--gray-500);font-size:.75rem;display:block">Début</span><strong>${dD}</strong></div>
+      <div><span style="color:var(--gray-500);font-size:.75rem;display:block">Fin</span><strong>${dF}</strong></div>
+      <div style="grid-column:1/-1"><span style="color:var(--gray-500);font-size:.75rem;display:block">État</span>
+        <strong style="color:${ec}">${esc(p.etat||'À venir')}</strong></div>
+    </div>
+    ${p.soustaches?.length ? `<div style="margin-top:12px;border-top:1px solid var(--gray-200);padding-top:10px">
+      <div style="font-size:.75rem;color:var(--gray-500);margin-bottom:6px;font-weight:600">SOUS-TÂCHES</div>
+      ${p.soustaches.map(s => {
+        const sc = etatColor(s.etat);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--gray-100);font-size:.82rem">
+          <span style="color:#38bdf8">↳</span>
+          <span style="flex:1;font-weight:500">${esc(s.nom)}</span>
+          <span style="color:${sc};font-weight:600;font-size:.75rem">${esc(s.etat||'À venir')}</span>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+    <div class="m-actions"><button class="btn btn-primary" onclick="fermerModal()">Fermer</button></div>`);
+};
+
+window._mobileTrimPrev = () => {
+  _mobileTrim = Math.max(0, (_mobileTrim < 0 ? Math.floor(new Date().getMonth()/3) : _mobileTrim) - 1);
   renderMobile();
 };
-window._mobileMoisNext = () => {
-  _mobileMois = Math.min(11, (_mobileMois < 0 ? new Date().getMonth() : _mobileMois) + 1);
+window._mobileTrimNext = () => {
+  _mobileTrim = Math.min(3, (_mobileTrim < 0 ? Math.floor(new Date().getMonth()/3) : _mobileTrim) + 1);
   renderMobile();
 };
 
