@@ -851,9 +851,9 @@ window.ouvrirConfigTech = () => {
     <div class="m-actions"><button class="btn" onclick="fermerModal()">Fermer</button></div>`;
   ouvrirModal(h);
 };
-window.ajouterTech = () => { techniciens.push({nom:'Nouvelle attribution',couleur:PALETTES[techniciens.length%PALETTES.length]}); ouvrirConfigTech(); scheduleSave(); };
-window.updateTechNom = (i, val) => { const old = techniciens[i].nom; techniciens[i].nom = val; for (const p of projets) { if(p.tech===old)p.tech=val; p.soustaches?.forEach(s=>{if(s.tech===old)s.tech=val;}); } scheduleSave(); };
-window.updateTechCoul = (i, hex) => { techniciens[i].couleur=hex; document.querySelectorAll(`#cg${i} .swatch`).forEach(s=>s.classList.toggle('sel',s.dataset.hex===hex)); document.getElementById('dot'+i).style.background=hex; renderAll(); scheduleSave(); };
+window.ajouterTech = () => { techniciens.push({nom:'Nouvelle attribution',couleur:PALETTES[techniciens.length%PALETTES.length]}); ouvrirConfigTech(); saveNow(); };
+window.updateTechNom = (i, val) => { const old = techniciens[i].nom; techniciens[i].nom = val; for (const p of projets) { if(p.tech===old)p.tech=val; p.soustaches?.forEach(s=>{if(s.tech===old)s.tech=val;}); } saveNow(); };
+window.updateTechCoul = (i, hex) => { techniciens[i].couleur=hex; document.querySelectorAll(`#cg${i} .swatch`).forEach(s=>s.classList.toggle('sel',s.dataset.hex===hex)); document.getElementById('dot'+i).style.background=hex; renderAll(); saveNow(); };
 
 window.ouvrirConfigCols = () => {
   let h = `<h3>Colonnes — intitulé &amp; largeur</h3>`;
@@ -868,8 +868,8 @@ window.ouvrirConfigCols = () => {
   h += `<div class="m-actions"><button class="btn" onclick="fermerModal()">Fermer</button></div>`;
   ouvrirModal(h);
 };
-window.updateColLabel = (i, val) => { colonnes[i].label = val; scheduleSave(); };
-window.updateColWidth = (i, val) => { colonnes[i].width = Math.max(40, +val||40); renderAll(); scheduleSave(); };
+window.updateColLabel = (i, val) => { colonnes[i].label = val; saveNow(); };
+window.updateColWidth = (i, val) => { colonnes[i].width = Math.max(40, +val||40); renderAll(); saveNow(); };
 
 /* ══════════════════════════════════════════════════════
    MODAL
@@ -922,7 +922,7 @@ function scheduleSave() {
   const ind = document.getElementById('save-indicator');
   ind.textContent = 'Modification…'; ind.classList.add('show');
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveNow, 2000);
+  saveTimer = setTimeout(saveNow, 600);
 }
 
 async function saveNow() {

@@ -80,11 +80,10 @@ const data = {
 
 const id = 'proj_tte';
 
-// Vérifier si le planning existe déjà
+// Ne créer que si le planning n'existe pas encore
 const existing = db.getProjectMeta(id);
 if (existing) {
-  console.log('⚠️  Le planning TTE existe déjà, mise à jour des données...');
-  db.saveProject(id, 'TTE', data, 'import');
+  console.log('ℹ️  Planning TTE déjà présent — aucune modification.');
 } else {
   db.createProject(id, 'TTE');
   db.saveProject(id, 'TTE', data, 'import');
