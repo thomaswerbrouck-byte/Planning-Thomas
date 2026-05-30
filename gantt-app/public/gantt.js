@@ -352,7 +352,7 @@ function buildRow(p, total, isSub, parentId, lefts) {
       } else {
         h += `<span style="color:#38bdf8;font-size:11px;flex-shrink:0;margin-right:1px">↳</span>`;
         h += `<input type="text" value="${esc(p.nom)}" style="flex:1;min-width:0" onchange="upd('${p.id}','nom',this.value)">`;
-        h += `<button class="row-btn row-btn-del" onclick="supprimerSoustache('${parentId}','${p.id}')" title="Supprimer" style="opacity:0">✕</button>`;
+        h += `<button class="row-btn row-btn-del" onclick="supprimerSoustache('${parentId}','${p.id}')" title="Supprimer">✕</button>`;
       }
       h += `</div>`;
     }
