@@ -206,5 +206,33 @@ function broadcastUsers(projectId) {
   io.emit('users_' + projectId, users);
 }
 
+/* ── Diagnostic ── */
+app.get('/api/status', (req, res) => {
+  const fs   = require('fs');
+  const path = require('path');
+  const dbDir = process.env.DB_DIR || path.join(__dirname, 'data');
+  let files = [];
+  try { files = fs.readdirSync(dbDir); } catch(e) { files = ['ERREUR: ' + e.message]; }
+  res.json({
+    db_dir: dbDir,
+    files,
+    projects: db.listProjects().map(p => ({ id: p.id, name: p.name, updated_at: p.updated_at })),
+    node_env: process.env.NODE_ENV,
+    uptime_s: Math.floor(process.uptime())
+  });
+});
+
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Planning server → http://localhost:${PORT}`));
+server.listen(PORT, () => {
+  const path = require('path');
+  const dbDir = process.env.DB_DIR || path.join(__dirname, 'data');
+  console.log(`Planning server → http://localhost:${PORT}`);
+  console.log(`DB_DIR = ${dbDir}`);
+  try {
+    const fs = require('fs');
+    const files = fs.readdirSync(dbDir);
+    console.log(`Fichiers dans DB_DIR (${files.length}):`, files.join(', '));
+  } catch(e) {
+    console.error('Impossible de lire DB_DIR:', e.message);
+  }
+});

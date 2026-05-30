@@ -943,15 +943,28 @@ function scheduleSave() {
 
 async function saveNow() {
   clearTimeout(saveTimer);
-  await fetch(`/api/projects/${projectId}/save`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: getProjectData(), user: pseudo })
-  });
-  ganttSocket.sendFullUpdate(getProjectData());
   const ind = document.getElementById('save-indicator');
-  ind.textContent = '✓ Sauvegardé'; ind.classList.add('show');
-  setTimeout(() => ind.classList.remove('show'), 2500);
+  ind.textContent = 'Sauvegarde…'; ind.classList.add('show');
+  try {
+    const res = await fetch(`/api/projects/${projectId}/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: getProjectData(), user: pseudo })
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => res.status);
+      ind.textContent = '✗ Erreur sauvegarde'; ind.style.color = '#ef4444';
+      console.error('saveNow HTTP error', res.status, txt);
+      return;
+    }
+    ind.style.color = '';
+    ind.textContent = '✓ Sauvegardé'; ind.classList.add('show');
+    setTimeout(() => ind.classList.remove('show'), 2500);
+    ganttSocket.sendFullUpdate(getProjectData());
+  } catch(e) {
+    ind.textContent = '✗ Réseau KO'; ind.style.color = '#ef4444';
+    console.error('saveNow network error', e);
+  }
 }
 
 window.sauvegarder = () => saveNow();
