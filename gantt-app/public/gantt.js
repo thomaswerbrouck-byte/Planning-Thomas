@@ -1009,6 +1009,7 @@ function _buildPrintWindow(d, f, ji) {
   const ordered = projFiltresTries(), total = ji.length;
   const WP = total<=31?11:total<=62?9:total<=93?8:total<=186?7:6;
   const idxDeb = idxDate(d), idxFin = idxDate(f);
+  const vcols = visibleCols();                          // ← colonnes visibles uniquement
   const fW = frozenW(), totalW = fW + total*WP;
   const zoom = Math.min(1, Math.floor((1070/totalW)*1000)/1000);
 
@@ -1028,10 +1029,10 @@ function _buildPrintWindow(d, f, ji) {
     <div style="font-size:8.5px;color:#64748b;margin-top:2px">Période : ${d.split('-').reverse().join('/')} → ${f.split('-').reverse().join('/')} &nbsp;|&nbsp; ${total} jours &nbsp;|&nbsp; ${ordered.length} opération${ordered.length>1?'s':''}</div></div>
     <div style="font-size:8px;color:#94a3b8">Édité le ${new Date().toLocaleDateString('fr-FR')}</div></div>`;
   ph += `<div style="zoom:${zoom};transform-origin:top left"><table style="width:${totalW}px"><colgroup>`;
-  for(const c of colonnes) ph+=`<col style="width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`;
+  for(const c of vcols) ph+=`<col style="width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`;
   for(let i=0;i<total;i++) ph+=`<col style="width:${WP}px;min-width:${WP}px;max-width:${WP}px">`;
   ph+=`</colgroup><thead><tr style="height:13px">`;
-  for(const c of colonnes) ph+=`<td rowspan="3" class="thf" style="vertical-align:middle;width:${c.width}px">${esc(c.label)}</td>`;
+  for(const c of vcols) ph+=`<td rowspan="3" class="thf" style="vertical-align:middle;width:${c.width}px">${esc(c.label)}</td>`;
   for(const mg of mG) ph+=`<td colspan="${mg.count}" style="text-align:center;font-size:7pt;font-weight:700;background:#eef2ff;color:#1e3a8a;border:0.5px solid #c7d2fe;padding:1px;-webkit-print-color-adjust:exact;print-color-adjust:exact">${mg.nom}</td>`;
   ph+=`</tr><tr style="height:9px">`;
   for(const sg of sG) ph+=`<td colspan="${sg.count}" style="text-align:center;font-size:6px;color:#64748b;border:0.5px solid #e2e8f0;background:#fafafa;padding:0">${sg.count*WP>=14?'S'+sg.sem:''}</td>`;
@@ -1039,19 +1040,19 @@ function _buildPrintWindow(d, f, ji) {
   for(const j of ji){const bg=j.wk?'#eef2ff':'white',fc=j.wk?'#818cf8':'#475569';ph+=`<td style="background:${bg};color:${fc};font-size:${WP>=9?6.5:5.5}px;text-align:center;border:0.5px solid #e2e8f0;border-bottom:1px solid #94a3b8;padding:0;line-height:1.1;vertical-align:middle">${WP>=8?`<div style="font-size:5px">${DWLET[j.dw]}</div>`:''}<div style="font-weight:700">${j.num}</div></td>`;}
   ph+=`</tr></thead><tbody>`;
   for(const p of ordered){
-    ph+=_printRow(p,ji,total,WP,idxDeb,idxFin,false,MNOMS);
-    if(p.soustaches?.length&&!collapsed[p.id])for(const s of p.soustaches)ph+=_printRow(s,ji,total,WP,idxDeb,idxFin,true,MNOMS);
+    ph+=_printRow(p,ji,total,WP,idxDeb,idxFin,false,vcols);
+    if(p.soustaches?.length&&!collapsed[p.id])for(const s of p.soustaches)ph+=_printRow(s,ji,total,WP,idxDeb,idxFin,true,vcols);
   }
   ph+=`</tbody></table></div><div style="font-size:7px;color:#94a3b8;text-align:right;padding:3px 0;border-top:0.5px solid #e2e8f0;margin-top:3px">Planning — Édité le ${new Date().toLocaleDateString('fr-FR')}</div></body></html>`;
   win.document.write(ph); win.document.close(); return win;
 }
 
-function _printRow(p, ji, total, WP, idxDeb, idxFin, isSub) {
+function _printRow(p, ji, total, WP, idxDeb, idxFin, isSub, vcols) {
   const col = getTechColor(p.tech), ec = etatColor(p.etat);
   const rowH = isSub?15:19, barTop=isSub?3:4, barH=isSub?9:11;
   let h = `<tr style="height:${rowH}px">`;
-  for(let ci=0;ci<colonnes.length;ci++){
-    const c=colonnes[ci],ck=c.key,cls=isSub?'csf':'cf';
+  for(let ci=0;ci<vcols.length;ci++){
+    const c=vcols[ci],ck=c.key,cls=isSub?'csf':'cf';
     h+=`<td class="${cls}" style="width:${c.width}px;max-width:${c.width}px">`;
     if(ck==='nom'){if(isSub)h+='<span style="color:#38bdf8;margin-right:2px">↳</span>';h+=`<span style="font-weight:${isSub?400:600}">${esc(p.nom)}</span>`;}
     else if(ck==='client')h+=`<span style="color:#64748b">${esc(p.client)}</span>`;
