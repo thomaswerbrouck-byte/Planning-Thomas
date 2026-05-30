@@ -1,7 +1,9 @@
 const fs   = require('fs');
 const path = require('path');
 
-const DB_DIR = process.env.DB_DIR || path.join(__dirname, 'data');
+/* Sur Render (production), utiliser /data (disque persistant) sauf si DB_DIR est explicitement défini */
+const DB_DIR = process.env.DB_DIR ||
+  (process.env.NODE_ENV === 'production' ? '/data' : path.join(__dirname, 'data'));
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 
 const PROJECTS_FILE = path.join(DB_DIR, 'projects.json');
