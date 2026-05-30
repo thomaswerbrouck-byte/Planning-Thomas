@@ -1,98 +1,123 @@
-const fs   = require('fs');
-const path = require('path');
+/* ══════════════════════════════════════════
+   db.js — Stockage via Supabase (gratuit, persistant)
+   Table: kv_store (key TEXT PRIMARY KEY, value TEXT, updated_at BIGINT)
+══════════════════════════════════════════ */
 
-/* Sur Render (production), utiliser /data (disque persistant) sauf si DB_DIR est explicitement défini */
-const DB_DIR = process.env.DB_DIR ||
-  (process.env.NODE_ENV === 'production' ? '/data' : path.join(__dirname, 'data'));
-if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-const PROJECTS_FILE = path.join(DB_DIR, 'projects.json');
-const HISTORY_DIR   = path.join(DB_DIR, 'history');
-if (!fs.existsSync(HISTORY_DIR)) fs.mkdirSync(HISTORY_DIR, { recursive: true });
-
-function readJSON(file, fallback) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
-}
-function writeJSON(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
-}
-
-/* ── Liste des projets (métadonnées) ── */
-function listProjects() {
-  return readJSON(PROJECTS_FILE, []);
-}
-
-function getProjectMeta(id) {
-  return listProjects().find(p => p.id === id) || null;
+/* ── Helpers REST Supabase ── */
+async function kvGet(key) {
+  if (!SUPABASE_URL) return null;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/kv_store?key=eq.${encodeURIComponent(key)}&select=value`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    );
+    const rows = await res.json();
+    if (!Array.isArray(rows) || !rows.length) return null;
+    return JSON.parse(rows[0].value);
+  } catch(e) {
+    console.error('kvGet error', key, e.message);
+    return null;
+  }
 }
 
-function saveMeta(projects) {
-  writeJSON(PROJECTS_FILE, projects);
+async function kvSet(key, value) {
+  if (!SUPABASE_URL) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/kv_store`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({ key, value: JSON.stringify(value), updated_at: Date.now() })
+    });
+  } catch(e) {
+    console.error('kvSet error', key, e.message);
+  }
+}
+
+async function kvDel(key) {
+  if (!SUPABASE_URL) return;
+  try {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/kv_store?key=eq.${encodeURIComponent(key)}`,
+      {
+        method: 'DELETE',
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      }
+    );
+  } catch(e) {
+    console.error('kvDel error', key, e.message);
+  }
+}
+
+/* ── Liste des projets ── */
+async function listProjects()         { return (await kvGet('projects')) || []; }
+async function saveMeta(projects)     { await kvSet('projects', projects); }
+
+async function getProjectMeta(id) {
+  const projects = await listProjects();
+  return projects.find(p => p.id === id) || null;
 }
 
 /* ── Données d'un projet ── */
-function getProjectData(id) {
-  const file = path.join(DB_DIR, `project_${id}.json`);
-  return readJSON(file, null);
-}
-
-function saveProjectData(id, data) {
-  const file = path.join(DB_DIR, `project_${id}.json`);
-  writeJSON(file, data);
-}
+async function getProjectData(id)     { return kvGet('project:' + id); }
+async function saveProjectData(id, d) { await kvSet('project:' + id, d); }
 
 /* ── CRUD projets ── */
-function createProject(id, name) {
-  const projects = listProjects();
+async function createProject(id, name) {
+  const projects = await listProjects();
   const now = Date.now();
   projects.push({ id, name, created_at: now, updated_at: now });
-  saveMeta(projects);
+  await saveMeta(projects);
 }
 
-function renameProject(id, name) {
-  const projects = listProjects();
+async function renameProject(id, name) {
+  const projects = await listProjects();
   const p = projects.find(x => x.id === id);
   if (p) { p.name = name; p.updated_at = Date.now(); }
-  saveMeta(projects);
+  await saveMeta(projects);
 }
 
-function deleteProject(id) {
-  let projects = listProjects();
+async function deleteProject(id) {
+  let projects = await listProjects();
   projects = projects.filter(p => p.id !== id);
-  saveMeta(projects);
-  const file = path.join(DB_DIR, `project_${id}.json`);
-  const hfile = path.join(HISTORY_DIR, `history_${id}.json`);
-  if (fs.existsSync(file))  fs.unlinkSync(file);
-  if (fs.existsSync(hfile)) fs.unlinkSync(hfile);
+  await saveMeta(projects);
+  await kvDel('project:' + id);
+  await kvDel('history:' + id);
 }
 
 /* ── Sauvegarde + historique ── */
-function saveProject(id, name, data, user) {
+async function saveProject(id, name, data, user) {
   const now = Date.now();
 
   /* Métadonnées */
-  const projects = listProjects();
+  const projects = await listProjects();
   const meta = projects.find(p => p.id === id);
-  if (meta) { meta.name = name; meta.updated_at = now; saveMeta(projects); }
+  if (meta) { meta.name = name; meta.updated_at = now; await saveMeta(projects); }
 
   /* Données */
-  saveProjectData(id, data);
+  await saveProjectData(id, data);
 
   /* Historique (10 dernières versions) */
-  const hfile = path.join(HISTORY_DIR, `history_${id}.json`);
-  const history = readJSON(hfile, []);
+  const history = (await kvGet('history:' + id)) || [];
   history.unshift({ id: now, saved_by: user || 'système', saved_at: now, data });
-  writeJSON(hfile, history.slice(0, 10));
+  await kvSet('history:' + id, history.slice(0, 10));
 }
 
-function getHistory(id) {
-  const hfile = path.join(HISTORY_DIR, `history_${id}.json`);
-  return readJSON(hfile, []).map(({ id, saved_by, saved_at }) => ({ id, saved_by, saved_at }));
+async function getHistory(id) {
+  const h = (await kvGet('history:' + id)) || [];
+  return h.map(({ id, saved_by, saved_at }) => ({ id, saved_by, saved_at }));
 }
 
-function getHistoryVersion(projectId, historyId) {
-  const hfile = path.join(HISTORY_DIR, `history_${projectId}.json`);
-  return readJSON(hfile, []).find(h => String(h.id) === String(historyId)) || null;
+async function getHistoryVersion(projectId, historyId) {
+  const h = (await kvGet('history:' + projectId)) || [];
+  return h.find(x => String(x.id) === String(historyId)) || null;
 }
 
 module.exports = {

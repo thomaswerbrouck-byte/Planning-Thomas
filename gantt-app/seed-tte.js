@@ -80,12 +80,13 @@ const data = {
 
 const id = 'proj_tte';
 
-// Ne créer que si le planning n'existe pas encore
-const existing = db.getProjectMeta(id);
-if (existing) {
-  console.log('ℹ️  Planning TTE déjà présent — aucune modification.');
-} else {
-  db.createProject(id, 'TTE');
-  db.saveProject(id, 'TTE', data, 'import');
-  console.log('✅ Planning TTE créé avec', tasks.length, 'tâches.');
-}
+(async () => {
+  const existing = await db.getProjectMeta(id);
+  if (existing) {
+    console.log('ℹ️  Planning TTE déjà présent — aucune modification.');
+  } else {
+    await db.createProject(id, 'TTE');
+    await db.saveProject(id, 'TTE', data, 'import');
+    console.log('✅ Planning TTE créé avec', tasks.length, 'tâches.');
+  }
+})();

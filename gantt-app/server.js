@@ -41,46 +41,43 @@ function defaultData() {
   };
 }
 
-function ensureDefaultProject() {
-  const projects = db.listProjects();
+async function ensureDefaultProject() {
+  const projects = await db.listProjects();
   if (projects.length === 0) {
     const id = 'default';
-    db.createProject(id, 'Mon Planning');
-    db.saveProject(id, 'Mon Planning', defaultData(), 'système');
+    await db.createProject(id, 'Mon Planning');
+    await db.saveProject(id, 'Mon Planning', defaultData(), 'système');
   } else {
-    /* Vérifier que chaque projet a bien un fichier de données */
     for (const p of projects) {
-      if (!db.getProjectData(p.id)) {
-        db.saveProject(p.id, p.name, defaultData(), 'système');
+      if (!await db.getProjectData(p.id)) {
+        await db.saveProject(p.id, p.name, defaultData(), 'système');
       }
     }
   }
 }
-ensureDefaultProject();
 
 /* ══════════════════════════════════════════
    API — liste des plannings
 ══════════════════════════════════════════ */
-app.get('/api/projects', (req, res) => {
-  res.json(db.listProjects());
+app.get('/api/projects', async (req, res) => {
+  res.json(await db.listProjects());
 });
 
-app.post('/api/projects', (req, res) => {
+app.post('/api/projects', async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'name required' });
   const id = 'proj_' + Date.now();
-  db.createProject(id, name);
-  db.saveProject(id, name, defaultData(), req.body.user || 'système');
+  await db.createProject(id, name);
+  await db.saveProject(id, name, defaultData(), req.body.user || 'système');
   res.json({ id, name });
 });
 
-app.post('/api/projects/:id/duplicate', (req, res) => {
+app.post('/api/projects/:id/duplicate', async (req, res) => {
   const { name, user } = req.body;
   if (!name) return res.status(400).json({ error: 'name required' });
-  const srcMeta = db.getProjectMeta(req.params.id);
+  const srcMeta = await db.getProjectMeta(req.params.id);
   if (!srcMeta) return res.status(404).json({ error: 'Not found' });
-  const srcData = db.getProjectData(req.params.id) || defaultData();
-  /* Générer de nouveaux IDs pour les tâches afin d'éviter les conflits */
+  const srcData = (await db.getProjectData(req.params.id)) || defaultData();
   const copy = JSON.parse(JSON.stringify(srcData));
   copy.tasks = (copy.tasks || []).map(t => ({
     ...t,
@@ -91,68 +88,67 @@ app.post('/api/projects/:id/duplicate', (req, res) => {
     }))
   }));
   const newId = 'proj_' + Date.now();
-  db.createProject(newId, name);
-  db.saveProject(newId, name, copy, user || 'système');
+  await db.createProject(newId, name);
+  await db.saveProject(newId, name, copy, user || 'système');
   res.json({ id: newId, name });
 });
 
-app.delete('/api/projects/:id', (req, res) => {
-  const projects = db.listProjects();
+app.delete('/api/projects/:id', async (req, res) => {
+  const projects = await db.listProjects();
   if (projects.length <= 1) return res.status(400).json({ error: 'Impossible de supprimer le dernier planning' });
-  db.deleteProject(req.params.id);
+  await db.deleteProject(req.params.id);
   res.json({ ok: true });
 });
 
-app.post('/api/projects/reorder', (req, res) => {
+app.post('/api/projects/reorder', async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids required' });
-  const projects = db.listProjects();
+  const projects = await db.listProjects();
   const reordered = ids.map(id => projects.find(p => p.id === id)).filter(Boolean);
-  // Conserver les projets non mentionnés à la fin
   projects.forEach(p => { if (!ids.includes(p.id)) reordered.push(p); });
-  db.saveMeta(reordered);
+  await db.saveMeta(reordered);
   res.json({ ok: true });
 });
 
-app.patch('/api/projects/:id/rename', (req, res) => {
+app.patch('/api/projects/:id/rename', async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'name required' });
-  db.renameProject(req.params.id, name);
+  await db.renameProject(req.params.id, name);
   res.json({ ok: true });
 });
 
 /* ══════════════════════════════════════════
    API — données d'un planning
 ══════════════════════════════════════════ */
-app.get('/api/projects/:id', (req, res) => {
-  const meta = db.getProjectMeta(req.params.id);
+app.get('/api/projects/:id', async (req, res) => {
+  const meta = await db.getProjectMeta(req.params.id);
   if (!meta) return res.status(404).json({ error: 'Not found' });
-  const data = db.getProjectData(req.params.id) || defaultData();
+  const data = (await db.getProjectData(req.params.id)) || defaultData();
   res.json({ ...meta, data });
 });
 
-app.post('/api/projects/:id/save', (req, res) => {
+app.post('/api/projects/:id/save', async (req, res) => {
   const { data, user } = req.body;
   if (!data) return res.status(400).json({ error: 'Missing data' });
-  const meta = db.getProjectMeta(req.params.id);
+  const meta = await db.getProjectMeta(req.params.id);
   if (!meta) return res.status(404).json({ error: 'Not found' });
-  db.saveProject(req.params.id, meta.name, data, user || 'anonyme');
+  await db.saveProject(req.params.id, meta.name, data, user || 'anonyme');
   res.json({ ok: true });
 });
 
-app.get('/api/projects/:id/history', (req, res) => {
-  res.json(db.getHistory(req.params.id));
+app.get('/api/projects/:id/history', async (req, res) => {
+  res.json(await db.getHistory(req.params.id));
 });
 
-app.get('/api/projects/:id/history/:hid', (req, res) => {
-  const v = db.getHistoryVersion(req.params.id, req.params.hid);
+app.get('/api/projects/:id/history/:hid', async (req, res) => {
+  const v = await db.getHistoryVersion(req.params.id, req.params.hid);
   if (!v) return res.status(404).json({ error: 'Not found' });
   res.json(v);
 });
 
-app.get('/api/projects/:id/export', (req, res) => {
-  const meta = db.getProjectMeta(req.params.id);
-  const data = db.getProjectData(req.params.id);
+app.get('/api/projects/:id/export', async (req, res) => {
+  const meta = await db.getProjectMeta(req.params.id);
+  const data = await db.getProjectData(req.params.id);
   res.setHeader('Content-Disposition', `attachment; filename="planning-${req.params.id}.json"`);
   res.setHeader('Content-Type', 'application/json');
   res.send(JSON.stringify({ name: meta?.name, data, exported_at: new Date().toISOString() }, null, 2));
@@ -161,7 +157,7 @@ app.get('/api/projects/:id/export', (req, res) => {
 /* ══════════════════════════════════════════
    SOCKET.IO
 ══════════════════════════════════════════ */
-const connectedUsers = new Map(); // socketId → { pseudo, projectId }
+const connectedUsers = new Map();
 
 io.on('connection', socket => {
   socket.on('join', ({ pseudo, projectId }) => {
@@ -172,10 +168,10 @@ io.on('connection', socket => {
     socket.broadcast.emit('user_joined', { pseudo: socket.data.pseudo, projectId: socket.data.projectId });
   });
 
-  socket.on('full_update', payload => {
+  socket.on('full_update', async payload => {
     const pid = socket.data.projectId;
-    const meta = db.getProjectMeta(pid);
-    if (meta) db.saveProject(pid, meta.name, payload.data, socket.data.pseudo);
+    const meta = await db.getProjectMeta(pid);
+    if (meta) await db.saveProject(pid, meta.name, payload.data, socket.data.pseudo);
     socket.to(pid).emit('full_update', { ...payload, by: socket.data.pseudo });
   });
 
@@ -202,37 +198,25 @@ function broadcastUsers(projectId) {
     .filter(u => u.projectId === projectId)
     .map(u => u.pseudo);
   io.to(projectId).emit('users', users);
-  /* also send to sockets not yet in a room */
   io.emit('users_' + projectId, users);
 }
 
 /* ── Diagnostic ── */
-app.get('/api/status', (req, res) => {
-  const fs   = require('fs');
-  const path = require('path');
-  const dbDir = process.env.DB_DIR || path.join(__dirname, 'data');
-  let files = [];
-  try { files = fs.readdirSync(dbDir); } catch(e) { files = ['ERREUR: ' + e.message]; }
+app.get('/api/status', async (req, res) => {
+  const projects = await db.listProjects();
   res.json({
-    db_dir: dbDir,
-    files,
-    projects: db.listProjects().map(p => ({ id: p.id, name: p.name, updated_at: p.updated_at })),
+    storage: 'supabase',
+    supabase_url: process.env.SUPABASE_URL ? process.env.SUPABASE_URL.replace(/\/\/.*@/, '//***@') : 'NON CONFIGURÉ',
+    projects: projects.map(p => ({ id: p.id, name: p.name, updated_at: p.updated_at })),
     node_env: process.env.NODE_ENV,
     uptime_s: Math.floor(process.uptime())
   });
 });
 
+/* ── Démarrage ── */
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  const path = require('path');
-  const dbDir = process.env.DB_DIR || path.join(__dirname, 'data');
-  console.log(`Planning server → http://localhost:${PORT}`);
-  console.log(`DB_DIR = ${dbDir}`);
-  try {
-    const fs = require('fs');
-    const files = fs.readdirSync(dbDir);
-    console.log(`Fichiers dans DB_DIR (${files.length}):`, files.join(', '));
-  } catch(e) {
-    console.error('Impossible de lire DB_DIR:', e.message);
-  }
-});
+(async () => {
+  console.log('Connexion Supabase:', process.env.SUPABASE_URL ? 'configurée' : 'MANQUANTE');
+  await ensureDefaultProject();
+  server.listen(PORT, () => console.log(`Planning server → http://localhost:${PORT}`));
+})();
