@@ -74,6 +74,28 @@ app.post('/api/projects', (req, res) => {
   res.json({ id, name });
 });
 
+app.post('/api/projects/:id/duplicate', (req, res) => {
+  const { name, user } = req.body;
+  if (!name) return res.status(400).json({ error: 'name required' });
+  const srcMeta = db.getProjectMeta(req.params.id);
+  if (!srcMeta) return res.status(404).json({ error: 'Not found' });
+  const srcData = db.getProjectData(req.params.id) || defaultData();
+  /* Générer de nouveaux IDs pour les tâches afin d'éviter les conflits */
+  const copy = JSON.parse(JSON.stringify(srcData));
+  copy.tasks = (copy.tasks || []).map(t => ({
+    ...t,
+    id: 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+    soustaches: (t.soustaches || []).map(s => ({
+      ...s,
+      id: 'st_' + Date.now() + '_' + Math.random().toString(36).slice(2)
+    }))
+  }));
+  const newId = 'proj_' + Date.now();
+  db.createProject(newId, name);
+  db.saveProject(newId, name, copy, user || 'système');
+  res.json({ id: newId, name });
+});
+
 app.delete('/api/projects/:id', (req, res) => {
   const projects = db.listProjects();
   if (projects.length <= 1) return res.status(400).json({ error: 'Impossible de supprimer le dernier planning' });

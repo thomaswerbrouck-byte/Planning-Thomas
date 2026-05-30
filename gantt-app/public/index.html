@@ -181,6 +181,7 @@
         <div class="proj-actions">
           <button class="proj-btn" onclick="reorderPlanning('${p.id}',-1)" title="Monter" ${idx===0?'style="opacity:.3;pointer-events:none"':''}>↑</button>
           <button class="proj-btn" onclick="reorderPlanning('${p.id}',1)"  title="Descendre" ${idx===projects.length-1?'style="opacity:.3;pointer-events:none"':''}>↓</button>
+          <button class="proj-btn" onclick="dupliquerPlanning('${p.id}','${p.name}')" title="Dupliquer">⧉</button>
           <button class="proj-btn" onclick="renommerPlanningId('${p.id}','${p.name}')" title="Renommer">✏</button>
           <button class="proj-btn del" onclick="supprimerPlanning('${p.id}')" title="Supprimer">✕</button>
         </div>`;
@@ -350,6 +351,21 @@
       document.getElementById('project-title').textContent = name.trim();
     await refreshProjectsList();
     toast('Planning renommé', 'ok');
+  };
+
+  /* ── Dupliquer ── */
+  window.dupliquerPlanning = async (id, name) => {
+    const newName = prompt('Nom du planning dupliqué :', name + ' (copie)');
+    if (!newName?.trim()) return;
+    const res = await fetch(`/api/projects/${id}/duplicate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName.trim(), user: window._pseudo })
+    }).then(r => r.json());
+    if (res.error) { toast(res.error, 'err'); return; }
+    await refreshProjectsList();
+    await loadProject(res.id, window._pseudo, false);
+    toast('Planning dupliqué', 'ok');
   };
 
   /* ── Supprimer ── */
