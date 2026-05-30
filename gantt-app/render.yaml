@@ -2,7 +2,7 @@ services:
   - type: web
     name: gantt-app
     env: node
-    buildCommand: npm install
+    buildCommand: npm install && node seed-tte.js
     startCommand: npm start
     plan: free
     envVars:

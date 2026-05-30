@@ -1,0 +1,629 @@
+{
+  "tasks": [
+    {
+      "nom": "ECHO LE MANS",
+      "client": "ECHO",
+      "etat": "En cours",
+      "debut": "2026-04-22",
+      "fin": "2026-04-22",
+      "tech": "ASEPTIC",
+      "id": "tte_96e1ba7e",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AURA PC PRE-MEDARD",
+      "client": "AURA PC",
+      "etat": "En cours",
+      "debut": "2026-04-25",
+      "fin": "2026-04-25",
+      "tech": "ECO",
+      "id": "tte_0b747c98",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CLINIQUE YVETOT",
+      "client": "CLINIQUE",
+      "etat": "En cours",
+      "debut": "2026-04-27",
+      "fin": "2026-04-27",
+      "tech": "ECO",
+      "id": "tte_56552fd0",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "SANTELYS CAUDRY",
+      "client": "SANTELYS",
+      "etat": "En cours",
+      "debut": "2026-05-04",
+      "fin": "2026-05-04",
+      "tech": "ECO",
+      "id": "tte_afb44b90",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "SANTELYS CAUDRY - Osmoseur",
+      "client": "SANTELYS",
+      "etat": "En cours",
+      "debut": "2026-05-04",
+      "fin": "2026-05-04",
+      "tech": "ECO",
+      "id": "tte_b24e6cf8",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CH Le Havre - TTE",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-05-19",
+      "fin": "2026-05-19",
+      "tech": "ECO",
+      "id": "tte_2ca20198",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CH Le Havre - Salle 1",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-05-21",
+      "fin": "2026-05-21",
+      "tech": "ECO",
+      "id": "tte_7e879b21",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CHU LIMOGES - Phase 1",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-05-25",
+      "fin": "2026-05-25",
+      "tech": "ASEPTIC",
+      "id": "tte_a8665b13",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CH Le Havre - Salle 2",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-05-28",
+      "fin": "2026-05-28",
+      "tech": "ECO",
+      "id": "tte_fd4612ec",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "ADH BEAURAINS",
+      "client": "ADH",
+      "etat": "À venir",
+      "debut": "2026-06-01",
+      "fin": "2026-06-01",
+      "tech": "ASEPTIC",
+      "id": "tte_2f7d24ab",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CH Le Havre - Salle 3",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-06-05",
+      "fin": "2026-06-05",
+      "tech": "ECO",
+      "id": "tte_96ab0a60",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "SANTELYS LA LOUVIERE",
+      "client": "SANTELYS",
+      "etat": "À venir",
+      "debut": "2026-06-08",
+      "fin": "2026-06-08",
+      "tech": "ECO",
+      "id": "tte_bc0ca989",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "ALMAVIVA - Saint Maximin - RESEAUX",
+      "client": "ALMAVIVA",
+      "etat": "À venir",
+      "debut": "2026-06-11",
+      "fin": "2026-06-11",
+      "tech": "ECO",
+      "id": "tte_a928b488",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "NCHPG Monaco",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-06-15",
+      "fin": "2026-06-15",
+      "tech": "ECO",
+      "id": "tte_39a07691",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AURA SANTE CHAMALIERE Phase 1",
+      "client": "AURA SANTE",
+      "etat": "À venir",
+      "debut": "2026-06-15",
+      "fin": "2026-06-15",
+      "tech": "ASEPTIC",
+      "id": "tte_e131c899",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "SANTELYS GRAVELINE",
+      "client": "SANTELYS",
+      "etat": "À venir",
+      "debut": "2026-06-22",
+      "fin": "2026-06-22",
+      "tech": "ECO",
+      "id": "tte_d720b514",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "ALMAVIVA - Saint Maximin - TTE",
+      "client": "ALMAVIVA",
+      "etat": "À venir",
+      "debut": "2026-06-29",
+      "fin": "2026-06-29",
+      "tech": "ECO",
+      "id": "tte_3d6f80aa",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CH Le Havre - Bascule",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-07-04",
+      "fin": "2026-07-04",
+      "tech": "ECO",
+      "id": "tte_e59b16fe",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "MAYOTTE MRADOUDOU",
+      "client": "MAYDIA",
+      "etat": "À venir",
+      "debut": "2026-07-06",
+      "fin": "2026-07-06",
+      "tech": "ECO",
+      "id": "tte_c0b67664",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AURA SANTE Vichy Phase 1",
+      "client": "AURA SANTE",
+      "etat": "À venir",
+      "debut": "2026-07-06",
+      "fin": "2026-07-06",
+      "tech": "ASEPTIC",
+      "id": "tte_1a3bfac7",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CH LA ROCHELLE - EXTENSION",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-07-06",
+      "fin": "2026-07-06",
+      "tech": "ECO",
+      "id": "tte_8fe94139",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CHU LIMOGES - Phase 2",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-07-06",
+      "fin": "2026-07-06",
+      "tech": "ASEPTIC",
+      "id": "tte_915a6759",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "Skid Prétraitement Yvetot",
+      "client": "HEMOTECH",
+      "etat": "À venir",
+      "debut": "2026-07-07",
+      "fin": "2026-07-07",
+      "tech": "Matériel",
+      "id": "tte_9377abbc",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "Provisoire 3 chimique + 0,2µm / TOSMPROV03 / 1350 P / VICHY",
+      "client": "HEMOTECH",
+      "etat": "À venir",
+      "debut": "2026-07-08",
+      "fin": "2026-07-08",
+      "tech": "Matériel",
+      "id": "tte_40e6afcb",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "STEER Hibiscus",
+      "client": "STEER",
+      "etat": "À venir",
+      "debut": "2026-07-13",
+      "fin": "2026-07-13",
+      "tech": "ECO",
+      "id": "tte_3c451a42",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AURAL AIX LES BAINS - Réseaux",
+      "client": "AURAL",
+      "etat": "À venir",
+      "debut": "2026-07-13",
+      "fin": "2026-07-13",
+      "tech": "ECO",
+      "id": "tte_34b70d68",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "ARPDD Saint Dizier",
+      "client": "ARPDD",
+      "etat": "À venir",
+      "debut": "2026-07-20",
+      "fin": "2026-07-20",
+      "tech": "Non attribué",
+      "id": "tte_e59523d7",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "ECHO LE MANS - Dépose de la boucle",
+      "client": "ECHO",
+      "etat": "À venir",
+      "debut": "2026-07-20",
+      "fin": "2026-07-20",
+      "tech": "ASEPTIC",
+      "id": "tte_52658a2a",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AURA SANTE CHAMALIERE Phase 2",
+      "client": "AURA SANTE",
+      "etat": "À venir",
+      "debut": "2026-07-25",
+      "fin": "2026-07-25",
+      "tech": "ASEPTIC",
+      "id": "tte_b809f116",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "DIAVERUM Saint Victoret",
+      "client": "DIAVERUM",
+      "etat": "À venir",
+      "debut": "2026-08-03",
+      "fin": "2026-08-03",
+      "tech": "Non attribué",
+      "id": "tte_c159a71f",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AURA SANTE Vichy Phase 2",
+      "client": "AURA SANTE",
+      "etat": "À venir",
+      "debut": "2026-08-17",
+      "fin": "2026-08-17",
+      "tech": "ASEPTIC",
+      "id": "tte_813119f3",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "ARPDD Saint Dizier - Bascule",
+      "client": "ARPDD",
+      "etat": "À venir",
+      "debut": "2026-08-29",
+      "fin": "2026-08-29",
+      "tech": "Non attribué",
+      "id": "tte_041cfcf3",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "Clinique Saint Martin",
+      "client": "Clinique",
+      "etat": "À venir",
+      "debut": "2026-08-31",
+      "fin": "2026-08-31",
+      "tech": "Non attribué",
+      "id": "tte_d76694d3",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AAIR TARASCON",
+      "client": "AAIR",
+      "etat": "À venir",
+      "debut": "2026-09-07",
+      "fin": "2026-09-07",
+      "tech": "ASEPTIC",
+      "id": "tte_ed455fe8",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "SANTELYS Iwuy",
+      "client": "SANTELYS",
+      "etat": "À venir",
+      "debut": "2026-09-07",
+      "fin": "2026-09-07",
+      "tech": "Non attribué",
+      "id": "tte_e4841746",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AURAL AIX LES BAINS - TTE",
+      "client": "AURAL",
+      "etat": "À venir",
+      "debut": "2026-09-07",
+      "fin": "2026-09-07",
+      "tech": "ECO",
+      "id": "tte_8aec1dd2",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "ADH LOISON SOUS LENS",
+      "client": "ADH",
+      "etat": "À venir",
+      "debut": "2026-09-21",
+      "fin": "2026-09-21",
+      "tech": "ASEPTIC",
+      "id": "tte_9c7b350a",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "SANTELYS Faches-Thumesnil",
+      "client": "SANTELYS",
+      "etat": "À venir",
+      "debut": "2026-09-21",
+      "fin": "2026-09-21",
+      "tech": "Non attribué",
+      "id": "tte_bf40ec80",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AURA SANTE Vichy Phase 3",
+      "client": "AURA SANTE",
+      "etat": "À venir",
+      "debut": "2026-09-25",
+      "fin": "2026-09-25",
+      "tech": "ASEPTIC",
+      "id": "tte_05cee73a",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AURA SANTE MONT-DORE Phase 1",
+      "client": "AURA SANTE",
+      "etat": "À venir",
+      "debut": "2026-10-10",
+      "fin": "2026-10-10",
+      "tech": "ASEPTIC",
+      "id": "tte_9c1a74a8",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CH VALENCIENNE - Phase 1",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-10-12",
+      "fin": "2026-10-12",
+      "tech": "Non attribué",
+      "id": "tte_d9a61e68",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CHU LIMOGES - Phase 3",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-10-19",
+      "fin": "2026-10-19",
+      "tech": "ASEPTIC",
+      "id": "tte_1aec9c44",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CH CHOLET",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-10-26",
+      "fin": "2026-10-26",
+      "tech": "Non attribué",
+      "id": "tte_a6c1936a",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CH VALENCIENNE - Bascule 1",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-10-31",
+      "fin": "2026-10-31",
+      "tech": "Non attribué",
+      "id": "tte_e9a8aa9d",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "SANTELYS Loos (Standby)",
+      "client": "SANTELYS",
+      "etat": "À venir",
+      "debut": "2026-11-02",
+      "fin": "2026-11-02",
+      "tech": "Non attribué",
+      "id": "tte_ffa7a5f1",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CH VALENCIENNE - Bascule 2",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-11-07",
+      "fin": "2026-11-07",
+      "tech": "Non attribué",
+      "id": "tte_b452df0e",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AAIR PAMIERS",
+      "client": "AAIR",
+      "etat": "À venir",
+      "debut": "2026-11-09",
+      "fin": "2026-11-09",
+      "tech": "ASEPTIC",
+      "id": "tte_12f9d6bf",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CH VALENCIENNE - Bascule 3",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2026-11-14",
+      "fin": "2026-11-14",
+      "tech": "Non attribué",
+      "id": "tte_cb2e1532",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AURA SANTE MONT-DORE Phase 2",
+      "client": "AURA SANTE",
+      "etat": "À venir",
+      "debut": "2026-11-16",
+      "fin": "2026-11-16",
+      "tech": "ASEPTIC",
+      "id": "tte_8064af90",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "SANTELYS La Basse",
+      "client": "SANTELYS",
+      "etat": "À venir",
+      "debut": "2026-11-23",
+      "fin": "2026-11-23",
+      "tech": "Non attribué",
+      "id": "tte_4e694c81",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "AURA SANTE Monluçon Phase 1",
+      "client": "AURA SANTE",
+      "etat": "À venir",
+      "debut": "2026-11-30",
+      "fin": "2026-11-30",
+      "tech": "ASEPTIC",
+      "id": "tte_f063f0c6",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "nom": "CHU LIMOGES - Phase 4",
+      "client": "CH",
+      "etat": "À venir",
+      "debut": "2027-02-01",
+      "fin": "2027-02-01",
+      "tech": "ASEPTIC",
+      "id": "tte_16b6de81",
+      "couleur": null,
+      "soustaches": []
+    }
+  ],
+  "techniciens": [
+    {
+      "nom": "ECO",
+      "couleur": "#10b981"
+    },
+    {
+      "nom": "ASEPTIC",
+      "couleur": "#3b82f6"
+    },
+    {
+      "nom": "Matériel",
+      "couleur": "#f59e0b"
+    },
+    {
+      "nom": "Non attribué",
+      "couleur": "#94a3b8"
+    }
+  ],
+  "colonnes": [
+    {
+      "key": "client",
+      "label": "Association",
+      "width": 110
+    },
+    {
+      "key": "nom",
+      "label": "Opération",
+      "width": 360
+    },
+    {
+      "key": "debut",
+      "label": "Début",
+      "width": 92
+    },
+    {
+      "key": "fin",
+      "label": "Fin",
+      "width": 92
+    },
+    {
+      "key": "tech",
+      "label": "Attribution",
+      "width": 130
+    },
+    {
+      "key": "etat",
+      "label": "État",
+      "width": 90
+    }
+  ],
+  "ANNEE": 2026,
+  "W": 14,
+  "collapsed": {}
+}
