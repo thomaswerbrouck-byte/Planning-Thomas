@@ -25,10 +25,12 @@
   <div id="projects-sidebar">
     <div id="projects-header">
       <span>Mes plannings</span>
+      <button id="btn-sidebar-close" onclick="toggleSidebar()" title="Masquer">‹</button>
     </div>
     <div id="projects-list"></div>
     <button id="btn-new-project" onclick="creerPlanning()">+ Nouveau planning</button>
   </div>
+  <button id="btn-sidebar-open" onclick="toggleSidebar()" title="Afficher les plannings">›</button>
 
   <!-- ── Main ── -->
   <div class="app-main">
@@ -164,9 +166,10 @@
 
   function renderProjectsList(projects, pseudo) {
     window._pseudo = pseudo;
+    window._projectsList = projects;
     const list = document.getElementById('projects-list');
     list.innerHTML = '';
-    projects.forEach(p => {
+    projects.forEach((p, idx) => {
       const div = document.createElement('div');
       div.className = 'proj-item' + (p.id === window._currentProjectId ? ' active' : '');
       div.dataset.id = p.id;
@@ -174,6 +177,8 @@
         <span class="proj-icon">📋</span>
         <span class="proj-name" title="${p.name}">${p.name}</span>
         <div class="proj-actions">
+          <button class="proj-btn" onclick="reorderPlanning('${p.id}',-1)" title="Monter" ${idx===0?'style="opacity:.3;pointer-events:none"':''}>↑</button>
+          <button class="proj-btn" onclick="reorderPlanning('${p.id}',1)"  title="Descendre" ${idx===projects.length-1?'style="opacity:.3;pointer-events:none"':''}>↓</button>
           <button class="proj-btn" onclick="renommerPlanningId('${p.id}','${p.name}')" title="Renommer">✏</button>
           <button class="proj-btn del" onclick="supprimerPlanning('${p.id}')" title="Supprimer">✕</button>
         </div>`;
@@ -183,6 +188,36 @@
       });
       list.appendChild(div);
     });
+  }
+
+  /* ── Réordonner les plannings ── */
+  window.reorderPlanning = async (id, dir) => {
+    const projects = [...window._projectsList];
+    const idx = projects.findIndex(p => p.id === id);
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= projects.length) return;
+    [projects[idx], projects[newIdx]] = [projects[newIdx], projects[idx]];
+    await fetch('/api/projects/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: projects.map(p => p.id) })
+    });
+    await refreshProjectsList();
+  };
+
+  /* ── Masquer / afficher la sidebar ── */
+  window.toggleSidebar = () => {
+    const sidebar = document.getElementById('projects-sidebar');
+    const btnOpen = document.getElementById('btn-sidebar-open');
+    const hidden  = sidebar.style.display === 'none';
+    sidebar.style.display = hidden ? '' : 'none';
+    btnOpen.style.display  = hidden ? 'none' : 'flex';
+    localStorage.setItem('sidebarHidden', hidden ? '0' : '1');
+  };
+  /* Restaurer l'état sidebar au démarrage */
+  if (localStorage.getItem('sidebarHidden') === '1') {
+    document.getElementById('projects-sidebar').style.display = 'none';
+    document.getElementById('btn-sidebar-open').style.display = 'flex';
   }
 
   async function refreshProjectsList() {

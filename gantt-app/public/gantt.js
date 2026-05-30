@@ -1013,6 +1013,9 @@ function _printRow(p, ji, total, WP, idxDeb, idxFin, isSub) {
   const bSR=Math.max(0,pD-idxDeb),bER=Math.min(total-1,pF-idxDeb);
   if(bSR<=bER&&pF>=idxDeb&&pD<=idxFin){
     const bL=bSR*WP,bW=(bER-bSR+1)*WP;
+    const parts=p.debut.split('-'), lblDate=parts[2]+'/'+parts[1];
+    /* Date avant la barre */
+    if(bL>2) h+=`<div style="position:absolute;top:50%;transform:translateY(-50%);right:calc(100% - ${bL}px + 2px);font-size:${isSub?5:6}px;font-weight:700;color:#64748b;white-space:nowrap;z-index:4">${lblDate}</div>`;
     h+=`<div style="position:absolute;top:${barTop}px;left:${bL}px;height:${barH}px;width:${bW}px;background:${col};border-radius:${isSub?2:3}px;z-index:3;opacity:${isSub?.82:1}">
       <div style="position:absolute;top:0;left:0;right:0;height:40%;background:rgba(255,255,255,.2);border-radius:inherit"></div></div>`;
     h+=`<div style="position:absolute;top:0;left:${bL+bW+3}px;bottom:0;display:flex;align-items:center;z-index:4">

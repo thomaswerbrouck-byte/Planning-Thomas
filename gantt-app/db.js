@@ -96,5 +96,6 @@ function getHistoryVersion(projectId, historyId) {
 module.exports = {
   listProjects, getProjectMeta, getProjectData,
   createProject, renameProject, deleteProject,
-  saveProject, getHistory, getHistoryVersion
+  saveProject, getHistory, getHistoryVersion,
+  saveMeta
 };

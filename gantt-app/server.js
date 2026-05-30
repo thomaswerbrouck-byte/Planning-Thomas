@@ -81,6 +81,17 @@ app.delete('/api/projects/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/api/projects/reorder', (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids required' });
+  const projects = db.listProjects();
+  const reordered = ids.map(id => projects.find(p => p.id === id)).filter(Boolean);
+  // Conserver les projets non mentionnés à la fin
+  projects.forEach(p => { if (!ids.includes(p.id)) reordered.push(p); });
+  db.saveMeta(reordered);
+  res.json({ ok: true });
+});
+
 app.patch('/api/projects/:id/rename', (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'name required' });
