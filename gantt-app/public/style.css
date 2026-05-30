@@ -557,6 +557,32 @@ tr:hover .row-btn { opacity: 1; }
   font-family: inherit;
 }
 
+/* ─── Bouton masquer l'en-tête (paysage mobile) ─── */
+#btn-compact-header {
+  display: none;
+  position: fixed;
+  top: 0; right: 10px;
+  z-index: 300;
+  background: rgba(15,27,61,.88);
+  color: rgba(255,255,255,.85);
+  border: none;
+  border-radius: 0 0 8px 8px;
+  padding: 3px 12px 4px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: opacity .15s;
+}
+#btn-compact-header:active { opacity: .7; }
+
+/* Visible uniquement en paysage sur petits écrans */
+@media (max-height: 520px) and (orientation: landscape) {
+  #btn-compact-header { display: block; }
+  body.header-compact #topbar  { display: none !important; }
+  body.header-compact #toolbar { display: none !important; }
+}
+
 /* ─── Print ─────────────────────────────── */
 @media print {
   #topbar, #toolbar, .overlay, #history-panel, #toast-box { display: none !important; }

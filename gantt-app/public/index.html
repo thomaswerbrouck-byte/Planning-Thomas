@@ -119,6 +119,9 @@
   <div id="history-list"></div>
 </div>
 
+<!-- Bouton masquer en-tête (paysage mobile) -->
+<button id="btn-compact-header" onclick="toggleCompactHeader()" title="Masquer/afficher l'en-tête">▲ Masquer</button>
+
 <!-- Toast -->
 <div id="toast-box"></div>
 
@@ -397,6 +400,19 @@
   window.fermerDrawerMobile = () => {
     document.getElementById('mobile-drawer').classList.remove('show');
   };
+
+  /* ── Masquer/afficher l'en-tête en mode paysage mobile ── */
+  window.toggleCompactHeader = () => {
+    const compact = document.body.classList.toggle('header-compact');
+    document.getElementById('btn-compact-header').textContent = compact ? '▼ En-tête' : '▲ Masquer';
+    localStorage.setItem('headerCompact', compact ? '1' : '0');
+  };
+  /* Restaurer l'état */
+  if (localStorage.getItem('headerCompact') === '1') {
+    document.body.classList.add('header-compact');
+    const btn = document.getElementById('btn-compact-header');
+    if (btn) btn.textContent = '▼ En-tête';
+  }
 
   /* expose pour gantt.js */
   window._loadProject  = (id) => loadProject(id, window._pseudo, false);
