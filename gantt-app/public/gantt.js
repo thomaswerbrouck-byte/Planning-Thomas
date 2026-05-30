@@ -662,6 +662,33 @@ function bindEvents() {
     if (colResizing !== null) colResizing = null;
   });
 
+  /* ── Pan (cliquer-glisser sur le gantt) ── */
+  const wrap = document.getElementById('gantt-wrap');
+  let isPanning = false, panX = 0, panY = 0, panSL = 0, panST = 0;
+
+  wrap.addEventListener('mousedown', e => {
+    /* Ignorer les clics sur barres, inputs, selects, boutons */
+    if (e.target.closest('[data-pid],[data-fbtn],input,select,button,.proj-actions,.row-actions')) return;
+    if (dragPid || colResizing !== null) return;
+    isPanning = true;
+    panX  = e.clientX; panY  = e.clientY;
+    panSL = wrap.scrollLeft; panST = wrap.scrollTop;
+    wrap.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!isPanning) return;
+    wrap.scrollLeft = panSL - (e.clientX - panX);
+    wrap.scrollTop  = panST - (e.clientY - panY);
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!isPanning) return;
+    isPanning = false;
+    wrap.style.cursor = '';
+  });
+
   /* Touch support */
   document.addEventListener('touchstart', e => {}, { passive: true });
   window.addEventListener('resize', () => renderAll());

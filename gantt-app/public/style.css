@@ -249,7 +249,9 @@ body {
   flex: 1; overflow: auto;
   background: var(--gray-100);
   -webkit-overflow-scrolling: touch;
+  cursor: grab;
 }
+#gantt-wrap:active { cursor: grabbing; }
 
 #gantt-wrap table {
   border-collapse: collapse;
