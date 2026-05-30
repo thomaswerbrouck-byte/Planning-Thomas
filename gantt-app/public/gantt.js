@@ -72,6 +72,7 @@ var ganttApp = {
 
     initAnneeSelect();
     initJours();
+    applyRowH();
     renderAll();
     if (!ganttApp._bound) { bindEvents(); ganttApp._bound = true; }
   },
@@ -190,7 +191,12 @@ function initJours() {
 
 window.changerAnnee = y => { ANNEE = +y; initJours(); renderAll(); scheduleSave(); };
 window.setZoom    = d => { W     = Math.max(WMIN,   Math.min(WMAX,   W+d));     document.getElementById('zoomLbl').textContent   = W+'px';     renderAll(); };
-window.setRowH    = d => { ROW_H = Math.max(ROW_HMIN, Math.min(ROW_HMAX, ROW_H+d)); document.getElementById('rowHLbl').textContent = ROW_H+'px'; renderAll(); scheduleSave(); };
+window.setRowH    = d => { ROW_H = Math.max(ROW_HMIN, Math.min(ROW_HMAX, ROW_H+d)); applyRowH(); renderAll(); scheduleSave(); };
+function applyRowH() {
+  document.documentElement.style.setProperty('--row-h', ROW_H + 'px');
+  const lbl = document.getElementById('rowHLbl');
+  if (lbl) lbl.textContent = ROW_H + 'px';
+}
 
 function initAnneeSelect() {
   const sel = document.getElementById('anneeSelect');
