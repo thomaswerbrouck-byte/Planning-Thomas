@@ -40,12 +40,12 @@ var techniciens = [
 ];
 
 var colonnes = [
-  { key: 'client', label: 'Association', width: 110 },
-  { key: 'nom',    label: 'Opération',   width: 360 },
-  { key: 'debut',  label: 'Début',       width: 92  },
-  { key: 'fin',    label: 'Fin',         width: 92  },
-  { key: 'tech',   label: 'Attribution', width: 130 },
-  { key: 'etat',   label: 'État',        width: 90  },
+  { key: 'client', label: 'Association', width: 110, visible: true },
+  { key: 'nom',    label: 'Opération',   width: 360, visible: true },
+  { key: 'debut',  label: 'Début',       width: 92,  visible: true },
+  { key: 'fin',    label: 'Fin',         width: 92,  visible: true },
+  { key: 'tech',   label: 'Attribution', width: 130, visible: true },
+  { key: 'etat',   label: 'État',        width: 90,  visible: true },
 ];
 
 var projets = [];
@@ -62,7 +62,7 @@ var ganttApp = {
     collapsed = {};
 
     if (data.techniciens) techniciens = data.techniciens;
-    if (data.colonnes)    colonnes    = data.colonnes;
+    if (data.colonnes)    colonnes    = data.colonnes.map(c => ({ visible: true, ...c }));
     if (data.ANNEE)       ANNEE       = data.ANNEE;
     if (data.W)           W           = data.W;
     if (data.ROW_H)       ROW_H       = data.ROW_H;
@@ -115,7 +115,7 @@ const etatColor    = e => ETAT_META[e]?.color ?? '#64748b';
 
 function idxDate(d)    { return jours.findIndex(j => j.clef === d); }
 function dateFromIdx(i){ i = Math.max(0, Math.min(jours.length - 1, i)); return jours[i].clef; }
-function frozenW()     { return colonnes.reduce((s, c) => s + c.width, 0); }
+function frozenW()     { return visibleCols().reduce((s, c) => s + c.width, 0); }
 
 function getById(id) {
   for (const p of projets) {
@@ -153,9 +153,11 @@ function projFiltresTries() {
   return res;
 }
 
+const visibleCols = () => colonnes.filter(c => c.visible !== false);
+
 function calcLefts() {
   let acc = 0, lefts = [];
-  for (const c of colonnes) { lefts.push(acc); acc += c.width; }
+  for (const c of visibleCols()) { lefts.push(acc); acc += c.width; }
   return lefts;
 }
 
@@ -234,21 +236,24 @@ function renderGantt() {
   for (const j of jours) { if (j.sem !== curS) { if (cnt) sG.push({sem:curS,count:cnt}); curS=j.sem; cnt=1; } else cnt++; }
   if (cnt) sG.push({sem:curS,count:cnt});
 
+  const vcols = visibleCols();
+
   let h = `<table style="border-collapse:collapse;table-layout:fixed"><colgroup>`;
-  for (const c of colonnes)  h += `<col style="width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`;
+  for (const c of vcols)  h += `<col style="width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`;
   for (let i = 0; i < total; i++) h += `<col style="width:${W}px;min-width:${W}px">`;
   h += `</colgroup><thead>`;
 
   /* Ligne mois */
   h += `<tr style="height:20px">`;
-  for (let ci = 0; ci < colonnes.length; ci++) {
-    const c = colonnes[ci];
+  for (let ci = 0; ci < vcols.length; ci++) {
+    const c = vcols[ci];
     const arrow = sortCol===c.key ? (sortDir===1?' ▲':' ▼') : '';
+    const globalCi = colonnes.indexOf(c);
     h += `<td rowspan="3" class="th-col sortable"
       style="position:sticky;top:0;left:${lefts[ci]}px;z-index:40;width:${c.width}px"
       onclick="doSort('${c.key}')">
       ${esc(c.label)}<span style="font-size:7px;margin-left:2px;opacity:${sortCol===c.key?1:.25}">${arrow}</span>
-      <div style="position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;z-index:5" onmousedown="startColResize(event,${ci})"></div>
+      <div style="position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;z-index:5" onmousedown="startColResize(event,${globalCi})"></div>
     </td>`;
   }
   for (const mg of mG)
@@ -274,8 +279,8 @@ function renderGantt() {
 
   /* Ligne filtres */
   h += `<tr class="frow">`;
-  for (let ci = 0; ci < colonnes.length; ci++) {
-    const c = colonnes[ci], vals = valeursUniques(c.key);
+  for (let ci = 0; ci < vcols.length; ci++) {
+    const c = vcols[ci], vals = valeursUniques(c.key);
     const active = filtres[c.key] && filtres[c.key].length < vals.length;
     h += `<td style="position:sticky;top:56px;left:${lefts[ci]}px;z-index:40;width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px;padding:2px;background:var(--gray-100);border:1px solid var(--gray-200)">
       <button data-fbtn class="frow-btn ${active?'active':''}" onclick="ouvrirFiltre('${c.key}',this)">
@@ -321,10 +326,11 @@ function buildRow(p, total, isSub, parentId, lefts) {
   const etatOpts = ETATS.map(v => `<option value="${v}" ${p.etat===v?'selected':''}>${v}</option>`).join('');
   const ec = etatColor(p.etat);
 
+  const vcols = visibleCols();
   let h = `<tr data-rowid="${p.id}">`;
 
-  for (let ci = 0; ci < colonnes.length; ci++) {
-    const c = colonnes[ci], ck = c.key;
+  for (let ci = 0; ci < vcols.length; ci++) {
+    const c = vcols[ci], ck = c.key;
     h += `<td class="cell ${isSub?'cell-sub':''}"
       style="position:sticky;left:${lefts[ci]}px;z-index:10;background:${rowBg};${bL}width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`;
 
@@ -856,17 +862,27 @@ window.updateTechNom = (i, val) => { const old = techniciens[i].nom; techniciens
 window.updateTechCoul = (i, hex) => { techniciens[i].couleur=hex; document.querySelectorAll(`#cg${i} .swatch`).forEach(s=>s.classList.toggle('sel',s.dataset.hex===hex)); document.getElementById('dot'+i).style.background=hex; renderAll(); saveNow(); };
 
 window.ouvrirConfigCols = () => {
-  let h = `<h3>Colonnes — intitulé &amp; largeur</h3>`;
+  let h = `<h3>Colonnes — visibilité &amp; largeur</h3>`;
   colonnes.forEach((c, i) => {
-    h += `<div class="cfg-row">
-      <span style="font-size:.75rem;color:var(--gray-500);width:44px;flex-shrink:0">Col. ${i+1}</span>
-      <input type="text" value="${esc(c.label)}" style="flex:1" onchange="updateColLabel(${i},this.value)">
-      <input type="number" value="${c.width}" min="40" max="400" style="width:64px;margin-left:6px" onchange="updateColWidth(${i},this.value)">
+    const vis = c.visible !== false;
+    const isNom = c.key === 'nom'; // colonne nom toujours visible
+    h += `<div class="cfg-row" style="opacity:${vis?1:.45}">
+      <label style="display:flex;align-items:center;gap:6px;cursor:${isNom?'default':'pointer'};flex-shrink:0" title="${isNom?'Colonne obligatoire':''}">
+        <input type="checkbox" ${vis?'checked':''} ${isNom?'disabled':''} onchange="toggleColVisible(${i},this.checked)" style="cursor:${isNom?'default':'pointer'}">
+      </label>
+      <input type="text" value="${esc(c.label)}" style="flex:1;${!vis?'color:var(--gray-400)':''}" onchange="updateColLabel(${i},this.value)" ${!vis?'disabled':''}>
+      <input type="number" value="${c.width}" min="40" max="400" style="width:64px;margin-left:6px" onchange="updateColWidth(${i},this.value)" ${!vis?'disabled':''}>
       <span style="font-size:.75rem;color:var(--gray-500)">px</span>
     </div>`;
   });
   h += `<div class="m-actions"><button class="btn" onclick="fermerModal()">Fermer</button></div>`;
   ouvrirModal(h);
+};
+window.toggleColVisible = (i, val) => {
+  colonnes[i].visible = val;
+  renderAll();
+  saveNow();
+  ouvrirConfigCols(); // rafraîchir la modale
 };
 window.updateColLabel = (i, val) => { colonnes[i].label = val; saveNow(); };
 window.updateColWidth = (i, val) => { colonnes[i].width = Math.max(40, +val||40); renderAll(); saveNow(); };
