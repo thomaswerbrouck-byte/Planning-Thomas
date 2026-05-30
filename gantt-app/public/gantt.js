@@ -375,146 +375,149 @@ function buildRow(p, total, isSub, parentId, lefts) {
   return h;
 }
 
-/* ─ Mobile — vue Gantt zoomée lecture seule ──────────── */
-var _mobileTrim = -1; // -1 = trimestre courant
+/* ─ Mobile — vue Gantt par mois, lecture seule ──────── */
+var _mobileMois = -1; // -1 = mois courant
 
 function renderMobile() {
-  /* Déterminer le trimestre à afficher */
   const today = new Date();
-  if (_mobileTrim < 0) _mobileTrim = Math.floor(today.getMonth() / 3);
-  const trim = Math.max(0, Math.min(3, _mobileTrim));
+  if (_mobileMois < 0) _mobileMois = today.getMonth();
+  const mois = Math.max(0, Math.min(11, _mobileMois));
 
-  const trimNames = ['T1 — Jan·Fév·Mar', 'T2 — Avr·Mai·Juin', 'T3 — Juil·Août·Sep', 'T4 — Oct·Nov·Déc'];
-  const mStart   = trim * 3;  // mois début (0-based)
-  const mEnd     = mStart + 2;
+  const MNOMS = ['Janvier','Février','Mars','Avril','Mai','Juin',
+                 'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
-  /* Jours du trimestre */
-  const joursM = jours.filter(j => j.moisIdx >= mStart && j.moisIdx <= mEnd);
-  if (!joursM.length) { document.getElementById('mobile-view').innerHTML = '<div style="padding:30px;text-align:center">Aucun jour</div>'; return; }
-  const total = joursM.length;
+  /* Jours du mois */
+  const joursM = jours.filter(j => j.moisIdx === mois);
+  if (!joursM.length) {
+    document.getElementById('mobile-view').innerHTML = '<div style="padding:30px;text-align:center">Aucun jour</div>';
+    return;
+  }
+  const total  = joursM.length;
   const idxDeb = idxDate(joursM[0].clef);
-  const idxFin = idxDate(joursM[joursM.length-1].clef);
 
-  /* Colonnes réduites */
+  /* Colonnes fixes réduites */
   const COLS = [
-    { key: 'nom',   label: 'Opération',  width: 110 },
-    { key: 'etat',  label: 'État',       width: 60  },
+    { key: 'nom',  label: 'Opération', width: 120 },
+    { key: 'etat', label: 'État',      width: 62  },
   ];
-  const WM   = 8; // px par jour
+  const WM       = 10; // px par jour — bien visible
   const frozenPx = COLS.reduce((s, c) => s + c.width, 0);
   const tableW   = frozenPx + total * WM;
-  const screenW  = window.innerWidth || 375;
-  const zoom     = Math.min(1, (screenW - 12) / tableW);
 
-  const DWLET = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
   const ordered = projFiltresTries();
+  const rowH = 30, barH = 17, barTop = 6;
 
-  /* Groupes mois */
-  let mG = [], curM = -1, cnt = 0;
-  for (const j of joursM) {
-    if (j.moisIdx !== curM) { if (cnt) mG.push({ nom: j.mois, moisIdx: curM, count: cnt }); curM = j.moisIdx; cnt = 1; }
-    else cnt++;
-  }
-  if (cnt) mG.push({ nom: joursM[joursM.length-1].mois, moisIdx: curM, count: cnt });
+  /* Barre de navigation */
+  let h = `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--navy);color:white;flex-shrink:0">
+    <button onclick="_mobileMoisPrev()" style="background:rgba(255,255,255,.18);border:none;color:white;border-radius:6px;padding:4px 14px;font-size:20px;cursor:pointer;font-family:inherit;line-height:1">‹</button>
+    <span style="font-size:.85rem;font-weight:600">${MNOMS[mois]} ${ANNEE}</span>
+    <button onclick="_mobileMoisNext()" style="background:rgba(255,255,255,.18);border:none;color:white;border-radius:6px;padding:4px 14px;font-size:20px;cursor:pointer;font-family:inherit;line-height:1">›</button>
+  </div>`;
 
-  const rowH = 28, barH = 16, barTop = 6;
-
-  let h = `
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--navy);color:white;flex-shrink:0;gap:6px">
-    <button onclick="_mobileTrimPrev()" style="background:rgba(255,255,255,.18);border:none;color:white;border-radius:6px;padding:5px 12px;font-size:18px;cursor:pointer;font-family:inherit">‹</button>
-    <span style="font-size:.82rem;font-weight:600">${trimNames[trim]} ${ANNEE}</span>
-    <button onclick="_mobileTrimNext()" style="background:rgba(255,255,255,.18);border:none;color:white;border-radius:6px;padding:5px 12px;font-size:18px;cursor:pointer;font-family:inherit">›</button>
-  </div>
-  <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;flex:1">
-  <div style="zoom:${zoom};transform-origin:top left;width:${tableW}px">
+  /* Tableau — scroll horizontal naturel, pas de zoom */
+  h += `<div style="overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1">
   <table style="border-collapse:collapse;table-layout:fixed;width:${tableW}px"><colgroup>`;
 
-  for (const c of COLS)  h += `<col style="width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`;
+  for (const c of COLS) h += `<col style="width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`;
   for (let i = 0; i < total; i++) h += `<col style="width:${WM}px;min-width:${WM}px">`;
   h += `</colgroup><thead>`;
 
-  /* Ligne mois */
+  /* En-tête : noms colonnes + numéros de jours */
   h += `<tr style="height:14px">`;
-  for (const c of COLS) h += `<td rowspan="2" style="position:sticky;top:0;left:${COLS.indexOf(c)===0?0:COLS[0].width}px;z-index:40;background:#1e3a8a;color:white;font-size:8px;font-weight:700;text-align:center;border:1px solid rgba(255,255,255,.15);vertical-align:middle">${c.label}</td>`;
-  for (const mg of mG)  h += `<td colspan="${mg.count}" style="background:#1e3a8a;color:white;font-size:7px;font-weight:700;text-align:center;border:1px solid rgba(255,255,255,.1);letter-spacing:.05em">${mg.nom.toUpperCase().slice(0,4)}</td>`;
-  h += `</tr>`;
-
-  /* Ligne jours */
-  h += `<tr style="height:13px">`;
+  let leftAcc = 0;
+  for (const c of COLS) {
+    h += `<td style="position:sticky;top:0;left:${leftAcc}px;z-index:40;background:#1e3a8a;color:white;font-size:8px;font-weight:700;text-align:center;border:1px solid rgba(255,255,255,.15);vertical-align:middle;padding:2px">${c.label}</td>`;
+    leftAcc += c.width;
+  }
   for (const j of joursM) {
     const isTod = j.clef === todayStr;
-    const bg = isTod ? '#fef9c3' : j.wk ? '#eef2ff' : '#f8fafc';
-    const fc = isTod ? '#92400e' : j.wk ? '#818cf8' : '#64748b';
-    h += `<td style="background:${bg};color:${fc};font-size:${WM>=8?6.5:5.5}px;text-align:center;border:0.5px solid #e2e8f0;padding:0;line-height:1.1;font-weight:${isTod?700:400}"><div>${j.num}</div></td>`;
+    const bg = isTod ? '#fef9c3' : j.wk ? '#eef2ff' : '#1e3a8a';
+    const fc = isTod ? '#92400e' : j.wk ? '#818cf8' : 'rgba(255,255,255,.85)';
+    h += `<td style="position:sticky;top:0;z-index:20;background:${bg};color:${fc};font-size:7px;text-align:center;border:0.5px solid rgba(255,255,255,.15);padding:1px 0;font-weight:${isTod?700:400}">${j.num}</td>`;
   }
   h += `</tr></thead><tbody>`;
 
   for (const p of ordered) {
-    h += _buildMobileRow(p, joursM, total, WM, idxDeb, idxFin, rowH, barH, barTop, false, COLS);
+    h += _buildMobileRow(p, joursM, total, WM, idxDeb, rowH, barH, barTop, false, COLS);
     if (p.soustaches?.length && !collapsed[p.id]) {
       for (const s of p.soustaches) {
-        if (matchFiltres(s)) h += _buildMobileRow(s, joursM, total, WM, idxDeb, idxFin, Math.round(rowH*.85), Math.round(barH*.8), barTop, true, COLS);
+        if (matchFiltres(s))
+          h += _buildMobileRow(s, joursM, total, WM, idxDeb, 24, 13, 5, true, COLS);
       }
     }
   }
 
-  h += `</tbody></table></div></div>`;
+  h += `</tbody></table></div>`;
 
   const el = document.getElementById('mobile-view');
-  el.innerHTML = h || `<div style="padding:30px;text-align:center;color:var(--gray-500)">Aucune opération</div>`;
+  el.innerHTML = h;
 }
 
-function _buildMobileRow(p, joursM, total, WM, idxDeb, idxFin, rowH, barH, barTop, isSub, COLS) {
-  const col = getColor(p), ec = etatColor(p.etat);
+function _buildMobileRow(p, joursM, total, WM, idxDeb, rowH, barH, barTop, isSub, COLS) {
+  const col   = getColor(p), ec = etatColor(p.etat);
   const rowBg = isSub ? '#f0f9ff' : 'white';
-  const bL    = isSub ? 'border-left:2px solid #38bdf8;' : '';
+  const bord  = isSub ? 'border-left:2px solid #38bdf8;' : '';
 
   let h = `<tr>`;
   let leftAcc = 0;
   for (const c of COLS) {
-    h += `<td style="position:sticky;left:${leftAcc}px;z-index:10;background:${rowBg};${bL}width:${c.width}px;max-width:${c.width}px;height:${rowH}px;border:0.5px solid #e2e8f0;padding:1px 3px;vertical-align:middle;overflow:hidden">`;
+    h += `<td style="position:sticky;left:${leftAcc}px;z-index:10;background:${rowBg};${bord}width:${c.width}px;max-width:${c.width}px;height:${rowH}px;border:0.5px solid #e2e8f0;padding:2px 4px;vertical-align:middle;overflow:hidden">`;
     if (c.key === 'nom') {
-      h += `<div style="display:flex;align-items:center;gap:2px;overflow:hidden">
-        ${isSub ? '<span style="color:#38bdf8;font-size:9px;flex-shrink:0">↳</span>' : `<span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`}
+      h += `<div style="display:flex;align-items:center;gap:3px;overflow:hidden">
+        ${isSub
+          ? `<span style="color:#38bdf8;font-size:10px;flex-shrink:0">↳</span>`
+          : `<span style="width:9px;height:9px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`}
         <span style="font-size:${isSub?8:9}px;font-weight:${isSub?400:600};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#1e293b">${esc(p.nom)}</span>
       </div>`;
     } else if (c.key === 'etat') {
-      h += `<span style="font-size:7.5px;font-weight:600;color:${ec};white-space:nowrap;overflow:hidden;display:block;text-overflow:ellipsis">${esc(p.etat||'À venir')}</span>`;
+      h += `<span style="font-size:8px;font-weight:600;color:${ec};white-space:nowrap;overflow:hidden;display:block;text-overflow:ellipsis">${esc(p.etat||'À venir')}</span>`;
     }
     h += `</td>`;
     leftAcc += c.width;
   }
 
-  /* Cellule barre */
-  const pD = idxDate(p.debut), pF = idxDate(p.fin);
-  const bSR = Math.max(0, pD - idxDeb);
-  const bER = Math.min(total - 1, pF - idxDeb);
+  /* Cellule barre — position:relative obligatoire pour les barres absolues */
   h += `<td colspan="${total}" style="position:relative;padding:0;height:${rowH}px;border-bottom:0.5px solid #e2e8f0;overflow:hidden;background:${rowBg}">`;
 
-  /* Fond weekends */
+  /* Fond weekends + aujourd'hui */
   let off = 0;
   for (const j of joursM) {
-    if (j.wk) h += `<div style="position:absolute;top:0;bottom:0;left:${off*WM}px;width:${WM}px;background:#eef2ff;pointer-events:none"></div>`;
-    if (j.clef === todayStr) h += `<div style="position:absolute;top:0;bottom:0;left:${off*WM}px;width:${WM}px;background:rgba(254,240,138,.6);border-left:1.5px solid #fbbf24;pointer-events:none;z-index:1"></div>`;
+    if (j.wk)            h += `<div style="position:absolute;inset:0 auto 0 ${off*WM}px;width:${WM}px;background:#eef2ff;pointer-events:none"></div>`;
+    if (j.clef===todayStr) h += `<div style="position:absolute;inset:0 auto 0 ${off*WM}px;width:${WM}px;background:rgba(254,240,138,.55);border-left:1.5px solid #fbbf24;pointer-events:none;z-index:1"></div>`;
     off++;
   }
 
-  if (bSR <= bER && pF >= joursM[0].clef && pD <= joursM[joursM.length-1].clef) {
-    const bLeft = bSR * WM, bWidth = (bER - bSR + 1) * WM;
-    h += `<div style="position:absolute;top:${barTop}px;left:${bLeft}px;height:${barH}px;width:${bWidth}px;background:${col};border-radius:${isSub?2:3}px;z-index:3;opacity:${isSub?.82:1};box-shadow:0 1px 4px ${hexRgba(col,.3)}">
-      <div style="position:absolute;top:0;left:0;right:0;height:40%;background:rgba(255,255,255,.2);border-radius:inherit"></div>
+  /* Barre */
+  const pD  = idxDate(p.debut);
+  const pF  = idxDate(p.fin);
+  const bSR = Math.max(0, pD - idxDeb);
+  const bER = Math.min(total - 1, pF - idxDeb);
+
+  if (bSR <= bER && p.fin >= joursM[0].clef && p.debut <= joursM[joursM.length-1].clef) {
+    const bLeft  = bSR * WM;
+    const bWidth = (bER - bSR + 1) * WM;
+    h += `<div style="position:absolute;top:${barTop}px;left:${bLeft}px;height:${barH}px;width:${bWidth}px;background:${col};border-radius:${isSub?2:4}px;z-index:3;box-shadow:0 1px 4px ${hexRgba(col,.35)}">
+      <div style="position:absolute;inset:0 0 auto 0;height:45%;background:rgba(255,255,255,.22);border-radius:inherit;pointer-events:none"></div>
     </div>`;
-    if (bWidth > 20)
-      h += `<div style="position:absolute;top:0;left:${bLeft+bWidth+3}px;bottom:0;display:flex;align-items:center;z-index:4">
-        <span style="font-size:7px;color:#374151;white-space:nowrap;font-weight:500">${esc(p.nom)}</span>
+    /* Label à droite de la barre si de la place */
+    if (bLeft + bWidth + 4 < total * WM)
+      h += `<div style="position:absolute;top:0;bottom:0;left:${bLeft+bWidth+4}px;display:flex;align-items:center;z-index:4;pointer-events:none">
+        <span style="font-size:7.5px;color:#374151;white-space:nowrap;font-weight:500">${esc(p.nom)}</span>
       </div>`;
   }
+
   h += `</td></tr>`;
   return h;
 }
 
-window._mobileTrimPrev = () => { _mobileTrim = Math.max(0, (_mobileTrim < 0 ? Math.floor(new Date().getMonth()/3) : _mobileTrim) - 1); renderMobile(); };
-window._mobileTrimNext = () => { _mobileTrim = Math.min(3, (_mobileTrim < 0 ? Math.floor(new Date().getMonth()/3) : _mobileTrim) + 1); renderMobile(); };
+window._mobileMoisPrev = () => {
+  _mobileMois = Math.max(0, (_mobileMois < 0 ? new Date().getMonth() : _mobileMois) - 1);
+  renderMobile();
+};
+window._mobileMoisNext = () => {
+  _mobileMois = Math.min(11, (_mobileMois < 0 ? new Date().getMonth() : _mobileMois) + 1);
+  renderMobile();
+};
 
 /* ══════════════════════════════════════════════════════
    DRAG — barres
