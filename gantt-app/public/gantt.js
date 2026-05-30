@@ -384,6 +384,11 @@ function _initMoisDefaut() {
   _moisSelectionnes = [t, t+1, t+2];
 }
 
+window._toggleMobilePanel = () => {
+  window._mobilePanelVisible = window._mobilePanelVisible === false ? true : false;
+  renderMobile();
+};
+
 window._toggleMoisMobile = idx => {
   _initMoisDefaut();
   const i = _moisSelectionnes.indexOf(idx);
@@ -427,22 +432,42 @@ function renderMobile() {
   const ordered = projFiltresTries();
   const rowH = 32, barH = 18, barTop = 7;
 
-  /* Sélecteur de mois */
-  let h = `<div style="background:#0f1b3d;flex-shrink:0;padding:8px 10px 6px">
-    <div style="font-size:.65rem;color:rgba(255,255,255,.45);font-weight:700;letter-spacing:.08em;margin-bottom:5px;text-transform:uppercase">Mois affichés — ${ANNEE}</div>
-    <div style="display:flex;gap:4px;flex-wrap:wrap">`;
-  for (let m = 0; m < 12; m++) {
-    const sel = _moisSelectionnes.includes(m);
-    h += `<button onclick="_toggleMoisMobile(${m})"
-      style="border:none;border-radius:5px;padding:4px 7px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .1s;
-             background:${sel ? 'var(--blue)' : 'rgba(255,255,255,.1)'};
-             color:${sel ? 'white' : 'rgba(255,255,255,.5)'}">
-      ${MNOMS3[m]}
-    </button>`;
-  }
-  h += `</div>
-    <div style="font-size:.63rem;color:rgba(255,255,255,.3);margin-top:5px">Appuyer sur une ligne pour voir les détails</div>
+  const panelVisible = window._mobilePanelVisible !== false;
+  const selLabel = moisTriés.map(m => MNOMS3[m]).join(' · ');
+
+  /* Bandeau repliable */
+  let h = `<div style="background:#0f1b3d;flex-shrink:0">`;
+
+  /* Barre titre toujours visible */
+  h += `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;cursor:pointer" onclick="_toggleMobilePanel()">
+    <div>
+      <span style="font-size:.7rem;color:rgba(255,255,255,.45);font-weight:700;letter-spacing:.08em;text-transform:uppercase">Mois : </span>
+      <span style="font-size:.75rem;color:rgba(255,255,255,.75);font-weight:600">${selLabel}</span>
+    </div>
+    <span style="font-size:11px;color:rgba(255,255,255,.5);background:rgba(255,255,255,.1);border-radius:4px;padding:2px 7px;flex-shrink:0">
+      ${panelVisible ? '▲ Masquer' : '▼ Mois'}
+    </span>
   </div>`;
+
+  /* Panneau dépliable */
+  if (panelVisible) {
+    h += `<div style="padding:0 10px 8px;border-top:1px solid rgba(255,255,255,.07)">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">`;
+    for (let m = 0; m < 12; m++) {
+      const sel = _moisSelectionnes.includes(m);
+      h += `<button onclick="_toggleMoisMobile(${m})"
+        style="border:none;border-radius:5px;padding:4px 8px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;
+               background:${sel ? 'var(--blue)' : 'rgba(255,255,255,.1)'};
+               color:${sel ? 'white' : 'rgba(255,255,255,.45)'}">
+        ${MNOMS3[m]}
+      </button>`;
+    }
+    h += `</div>
+      <div style="font-size:.62rem;color:rgba(255,255,255,.25);margin-top:6px">Appuyez sur une ligne pour les détails complets</div>
+    </div>`;
+  }
+
+  h += `</div>`;
 
   /* Tableau scrollable horizontalement */
   h += `<div style="overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1">
