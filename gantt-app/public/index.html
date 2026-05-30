@@ -35,7 +35,8 @@
 
     <!-- Top bar -->
     <div id="topbar">
-      <span class="logo">📋</span>
+      <button id="mobile-proj-btn" onclick="ouvrirDrawerMobile()">☰ Plannings</button>
+      <span class="logo" style="display:none" id="logo-desk">📋</span>
       <h2 id="project-title" title="Double-cliquer pour renommer" ondblclick="renommerPlanning()">Planning</h2>
       <div id="users-bar">
         <span id="users-label">0 connecté</span>
@@ -86,6 +87,19 @@
 
   </div><!-- /app-main -->
 </div><!-- /app -->
+
+<!-- Drawer mobile plannings -->
+<div id="mobile-drawer">
+  <div id="mobile-drawer-bg" onclick="fermerDrawerMobile()"></div>
+  <div id="mobile-drawer-panel">
+    <div class="drawer-header">
+      <span>Mes plannings</span>
+      <button onclick="fermerDrawerMobile()">✕</button>
+    </div>
+    <div id="mobile-drawer-list"></div>
+    <button id="mobile-drawer-new" onclick="creerPlanning();fermerDrawerMobile()">+ Nouveau planning</button>
+  </div>
+</div>
 
 <!-- Modal -->
 <div class="overlay" id="modal">
@@ -246,6 +260,24 @@
     if (id === window._currentProjectId)
       await loadProject(projects[0].id, window._pseudo, false);
     toast('Planning supprimé');
+  };
+
+  /* ── Drawer mobile ── */
+  window.ouvrirDrawerMobile = async () => {
+    const projects = await fetch('/api/projects').then(r => r.json());
+    const list = document.getElementById('mobile-drawer-list');
+    list.innerHTML = '';
+    projects.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'proj-item' + (p.id === window._currentProjectId ? ' active' : '');
+      div.innerHTML = `<span class="proj-icon">📋</span><span class="proj-name">${p.name}</span>`;
+      div.onclick = () => { loadProject(p.id, window._pseudo, false); fermerDrawerMobile(); };
+      list.appendChild(div);
+    });
+    document.getElementById('mobile-drawer').classList.add('show');
+  };
+  window.fermerDrawerMobile = () => {
+    document.getElementById('mobile-drawer').classList.remove('show');
   };
 
   /* expose pour gantt.js */
