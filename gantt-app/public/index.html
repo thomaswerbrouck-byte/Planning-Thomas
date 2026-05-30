@@ -265,6 +265,10 @@
 
   /* ── Charger un planning ── */
   async function loadProject(id, pseudo, first) {
+    /* Sauvegarder le projet courant avant de changer */
+    if (window._currentProjectId && window._currentProjectId !== id) {
+      try { await window.sauvegarder?.(); } catch(e) {}
+    }
     window._currentProjectId = id;
     let proj;
     try {

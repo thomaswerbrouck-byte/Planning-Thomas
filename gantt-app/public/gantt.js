@@ -191,9 +191,9 @@ function initJours() {
   todayIdx = idxDate(todayStr);
 }
 
-window.changerAnnee = y => { ANNEE = +y; initJours(); renderAll(); scheduleSave(); };
-window.setZoom    = d => { W     = Math.max(WMIN,   Math.min(WMAX,   W+d));     document.getElementById('zoomLbl').textContent   = W+'px';     renderAll(); };
-window.setRowH    = d => { ROW_H = Math.max(ROW_HMIN, Math.min(ROW_HMAX, ROW_H+d)); applyRowH(); renderAll(); scheduleSave(); };
+window.changerAnnee = y => { ANNEE = +y; initJours(); renderAll(); saveNow(); };
+window.setZoom    = d => { W     = Math.max(WMIN,   Math.min(WMAX,   W+d));     document.getElementById('zoomLbl').textContent   = W+'px';     renderAll(); saveNow(); };
+window.setRowH    = d => { ROW_H = Math.max(ROW_HMIN, Math.min(ROW_HMAX, ROW_H+d)); applyRowH(); renderAll(); saveNow(); };
 function applyRowH() {
   document.documentElement.style.setProperty('--row-h', ROW_H + 'px');
   const lbl = document.getElementById('rowHLbl');
@@ -665,7 +665,7 @@ function bindEvents() {
       }
       dragPid = null; dragMode = null; renderAll(); scheduleSave();
     }
-    if (colResizing !== null) colResizing = null;
+    if (colResizing !== null) { colResizing = null; saveNow(); }
   });
 
   /* ── Pan (cliquer-glisser sur le gantt) ── */
@@ -704,8 +704,8 @@ window.startColResize = (e, idx) => {
   e.stopPropagation(); e.preventDefault();
   colResizing = idx; colResX0 = e.clientX; colResW0 = colonnes[idx].width;
 };
-window.doSort = k => { if (sortCol===k) sortDir*=-1; else { sortCol=k; sortDir=1; } renderAll(); };
-window.toggleCollapse = pid => { collapsed[pid] = !collapsed[pid]; renderAll(); };
+window.doSort = k => { if (sortCol===k) sortDir*=-1; else { sortCol=k; sortDir=1; } renderAll(); saveNow(); };
+window.toggleCollapse = pid => { collapsed[pid] = !collapsed[pid]; renderAll(); saveNow(); };
 
 /* ══════════════════════════════════════════════════════
    CRUD
@@ -938,7 +938,7 @@ function scheduleSave() {
   const ind = document.getElementById('save-indicator');
   ind.textContent = 'Modification…'; ind.classList.add('show');
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveNow, 600);
+  saveTimer = setTimeout(saveNow, 300);
 }
 
 async function saveNow() {
