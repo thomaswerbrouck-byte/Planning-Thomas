@@ -1,0 +1,150 @@
+{
+  "tasks": [
+    {
+      "id": "a1dec5d5-ec30-4f70-b5db-44f66c67ee22",
+      "nom": "Opération exemple",
+      "client": "Association",
+      "debut": "2026-05-30",
+      "fin": "2026-05-30",
+      "tech": "Aseptic",
+      "etat": "À venir",
+      "couleur": null,
+      "soustaches": [
+        {
+          "id": "st_1780127209976",
+          "nom": "Nouvelle sous-tâche",
+          "client": "Association",
+          "debut": "2026-06-05",
+          "fin": "2026-06-19",
+          "tech": "Aseptic",
+          "etat": "À venir"
+        }
+      ]
+    },
+    {
+      "id": "id_1780127219724",
+      "nom": "Opération exemple (copie)",
+      "client": "Association",
+      "debut": "2026-06-04",
+      "fin": "2026-06-10",
+      "tech": "Aseptic",
+      "etat": "À venir",
+      "couleur": null,
+      "soustaches": [
+        {
+          "id": "st_1780127222013",
+          "nom": "Nouvelle sous-tâche",
+          "client": "Association",
+          "debut": "2026-05-30",
+          "fin": "2026-05-30",
+          "tech": "Aseptic",
+          "etat": "À venir"
+        }
+      ]
+    },
+    {
+      "id": "id_1780127227667",
+      "nom": "Nouvelle opération",
+      "client": "Association",
+      "debut": "2026-05-30",
+      "fin": "2026-06-03",
+      "tech": "Mise en service",
+      "etat": "À venir",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "id": "id_1780127227833",
+      "nom": "Nouvelle opération",
+      "client": "Association",
+      "debut": "2026-05-30",
+      "fin": "2026-06-02",
+      "tech": "Mise en service",
+      "etat": "À venir",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "id": "id_1780127228008",
+      "nom": "Nouvelle opération",
+      "client": "Association",
+      "debut": "2026-05-30",
+      "fin": "2026-06-10",
+      "tech": "Prélèvement",
+      "etat": "À venir",
+      "couleur": null,
+      "soustaches": []
+    },
+    {
+      "id": "id_1780127228180",
+      "nom": "Nouvelle opération",
+      "client": "Association",
+      "debut": "2026-06-08",
+      "fin": "2026-06-23",
+      "tech": "Livraison osmoseur",
+      "etat": "À venir",
+      "couleur": null,
+      "soustaches": []
+    }
+  ],
+  "techniciens": [
+    {
+      "nom": "Aseptic",
+      "couleur": "#ec4899"
+    },
+    {
+      "nom": "Mise en service",
+      "couleur": "#10b981"
+    },
+    {
+      "nom": "Prélèvement",
+      "couleur": "#0ea5e9"
+    },
+    {
+      "nom": "Livraison osmoseur",
+      "couleur": "#8b5cf6"
+    },
+    {
+      "nom": "Résultat",
+      "couleur": "#ef4444"
+    }
+  ],
+  "colonnes": [
+    {
+      "key": "client",
+      "label": "Association",
+      "width": 110
+    },
+    {
+      "key": "nom",
+      "label": "Opération",
+      "width": 360
+    },
+    {
+      "key": "debut",
+      "label": "Début",
+      "width": 92
+    },
+    {
+      "key": "fin",
+      "label": "Fin",
+      "width": 92
+    },
+    {
+      "key": "tech",
+      "label": "Attribution",
+      "width": 130
+    },
+    {
+      "key": "etat",
+      "label": "État",
+      "width": 90
+    }
+  ],
+  "ANNEE": 2026,
+  "W": 14,
+  "collapsed": {
+    "a1dec5d5-ec30-4f70-b5db-44f66c67ee22": false,
+    "id_1780127219724": true
+  }
+}

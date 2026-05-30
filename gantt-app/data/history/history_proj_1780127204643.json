@@ -1,0 +1,384 @@
+[
+  {
+    "id": 1780127343385,
+    "saved_by": "Thomas",
+    "saved_at": 1780127343385,
+    "data": {
+      "tasks": [
+        {
+          "id": "d90dcf19-95a1-42d0-b583-af6364159444",
+          "nom": "Opération exemple",
+          "client": "Association",
+          "debut": "2026-05-30",
+          "fin": "2026-05-30",
+          "tech": "Aseptic",
+          "etat": "Annulé",
+          "couleur": null,
+          "soustaches": []
+        }
+      ],
+      "techniciens": [
+        {
+          "nom": "Aseptic",
+          "couleur": "#ec4899"
+        },
+        {
+          "nom": "Mise en service",
+          "couleur": "#10b981"
+        },
+        {
+          "nom": "Prélèvement",
+          "couleur": "#0ea5e9"
+        },
+        {
+          "nom": "Livraison osmoseur",
+          "couleur": "#8b5cf6"
+        },
+        {
+          "nom": "Résultat",
+          "couleur": "#ef4444"
+        }
+      ],
+      "colonnes": [
+        {
+          "key": "client",
+          "label": "Association",
+          "width": 110
+        },
+        {
+          "key": "nom",
+          "label": "Opération",
+          "width": 360
+        },
+        {
+          "key": "debut",
+          "label": "Début",
+          "width": 92
+        },
+        {
+          "key": "fin",
+          "label": "Fin",
+          "width": 92
+        },
+        {
+          "key": "tech",
+          "label": "Attribution",
+          "width": 130
+        },
+        {
+          "key": "etat",
+          "label": "État",
+          "width": 90
+        }
+      ],
+      "ANNEE": 2026,
+      "W": 14,
+      "collapsed": {}
+    }
+  },
+  {
+    "id": 1780127343383,
+    "saved_by": "Thomas",
+    "saved_at": 1780127343383,
+    "data": {
+      "tasks": [
+        {
+          "id": "d90dcf19-95a1-42d0-b583-af6364159444",
+          "nom": "Opération exemple",
+          "client": "Association",
+          "debut": "2026-05-30",
+          "fin": "2026-05-30",
+          "tech": "Aseptic",
+          "etat": "Annulé",
+          "couleur": null,
+          "soustaches": []
+        }
+      ],
+      "techniciens": [
+        {
+          "nom": "Aseptic",
+          "couleur": "#ec4899"
+        },
+        {
+          "nom": "Mise en service",
+          "couleur": "#10b981"
+        },
+        {
+          "nom": "Prélèvement",
+          "couleur": "#0ea5e9"
+        },
+        {
+          "nom": "Livraison osmoseur",
+          "couleur": "#8b5cf6"
+        },
+        {
+          "nom": "Résultat",
+          "couleur": "#ef4444"
+        }
+      ],
+      "colonnes": [
+        {
+          "key": "client",
+          "label": "Association",
+          "width": 110
+        },
+        {
+          "key": "nom",
+          "label": "Opération",
+          "width": 360
+        },
+        {
+          "key": "debut",
+          "label": "Début",
+          "width": 92
+        },
+        {
+          "key": "fin",
+          "label": "Fin",
+          "width": 92
+        },
+        {
+          "key": "tech",
+          "label": "Attribution",
+          "width": 130
+        },
+        {
+          "key": "etat",
+          "label": "État",
+          "width": 90
+        }
+      ],
+      "ANNEE": 2026,
+      "W": 14,
+      "collapsed": {}
+    }
+  },
+  {
+    "id": 1780127338818,
+    "saved_by": "Thomas",
+    "saved_at": 1780127338818,
+    "data": {
+      "tasks": [
+        {
+          "id": "d90dcf19-95a1-42d0-b583-af6364159444",
+          "nom": "Opération exemple",
+          "client": "Association",
+          "debut": "2026-05-30",
+          "fin": "2026-05-30",
+          "tech": "Aseptic",
+          "etat": "Terminé",
+          "couleur": null,
+          "soustaches": []
+        }
+      ],
+      "techniciens": [
+        {
+          "nom": "Aseptic",
+          "couleur": "#ec4899"
+        },
+        {
+          "nom": "Mise en service",
+          "couleur": "#10b981"
+        },
+        {
+          "nom": "Prélèvement",
+          "couleur": "#0ea5e9"
+        },
+        {
+          "nom": "Livraison osmoseur",
+          "couleur": "#8b5cf6"
+        },
+        {
+          "nom": "Résultat",
+          "couleur": "#ef4444"
+        }
+      ],
+      "colonnes": [
+        {
+          "key": "client",
+          "label": "Association",
+          "width": 110
+        },
+        {
+          "key": "nom",
+          "label": "Opération",
+          "width": 360
+        },
+        {
+          "key": "debut",
+          "label": "Début",
+          "width": 92
+        },
+        {
+          "key": "fin",
+          "label": "Fin",
+          "width": 92
+        },
+        {
+          "key": "tech",
+          "label": "Attribution",
+          "width": 130
+        },
+        {
+          "key": "etat",
+          "label": "État",
+          "width": 90
+        }
+      ],
+      "ANNEE": 2026,
+      "W": 14,
+      "collapsed": {}
+    }
+  },
+  {
+    "id": 1780127338815,
+    "saved_by": "Thomas",
+    "saved_at": 1780127338815,
+    "data": {
+      "tasks": [
+        {
+          "id": "d90dcf19-95a1-42d0-b583-af6364159444",
+          "nom": "Opération exemple",
+          "client": "Association",
+          "debut": "2026-05-30",
+          "fin": "2026-05-30",
+          "tech": "Aseptic",
+          "etat": "Terminé",
+          "couleur": null,
+          "soustaches": []
+        }
+      ],
+      "techniciens": [
+        {
+          "nom": "Aseptic",
+          "couleur": "#ec4899"
+        },
+        {
+          "nom": "Mise en service",
+          "couleur": "#10b981"
+        },
+        {
+          "nom": "Prélèvement",
+          "couleur": "#0ea5e9"
+        },
+        {
+          "nom": "Livraison osmoseur",
+          "couleur": "#8b5cf6"
+        },
+        {
+          "nom": "Résultat",
+          "couleur": "#ef4444"
+        }
+      ],
+      "colonnes": [
+        {
+          "key": "client",
+          "label": "Association",
+          "width": 110
+        },
+        {
+          "key": "nom",
+          "label": "Opération",
+          "width": 360
+        },
+        {
+          "key": "debut",
+          "label": "Début",
+          "width": 92
+        },
+        {
+          "key": "fin",
+          "label": "Fin",
+          "width": 92
+        },
+        {
+          "key": "tech",
+          "label": "Attribution",
+          "width": 130
+        },
+        {
+          "key": "etat",
+          "label": "État",
+          "width": 90
+        }
+      ],
+      "ANNEE": 2026,
+      "W": 14,
+      "collapsed": {}
+    }
+  },
+  {
+    "id": 1780127204643,
+    "saved_by": "Thomas",
+    "saved_at": 1780127204643,
+    "data": {
+      "tasks": [
+        {
+          "id": "d90dcf19-95a1-42d0-b583-af6364159444",
+          "nom": "Opération exemple",
+          "client": "Association",
+          "debut": "2026-05-30",
+          "fin": "2026-05-30",
+          "tech": "Aseptic",
+          "etat": "À venir",
+          "couleur": null,
+          "soustaches": []
+        }
+      ],
+      "techniciens": [
+        {
+          "nom": "Aseptic",
+          "couleur": "#ec4899"
+        },
+        {
+          "nom": "Mise en service",
+          "couleur": "#10b981"
+        },
+        {
+          "nom": "Prélèvement",
+          "couleur": "#0ea5e9"
+        },
+        {
+          "nom": "Livraison osmoseur",
+          "couleur": "#8b5cf6"
+        },
+        {
+          "nom": "Résultat",
+          "couleur": "#ef4444"
+        }
+      ],
+      "colonnes": [
+        {
+          "key": "client",
+          "label": "Association",
+          "width": 110
+        },
+        {
+          "key": "nom",
+          "label": "Opération",
+          "width": 360
+        },
+        {
+          "key": "debut",
+          "label": "Début",
+          "width": 92
+        },
+        {
+          "key": "fin",
+          "label": "Fin",
+          "width": 92
+        },
+        {
+          "key": "tech",
+          "label": "Attribution",
+          "width": 130
+        },
+        {
+          "key": "etat",
+          "label": "État",
+          "width": 90
+        }
+      ]
+    }
+  }
+]
