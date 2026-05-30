@@ -47,6 +47,13 @@ function ensureDefaultProject() {
     const id = 'default';
     db.createProject(id, 'Mon Planning');
     db.saveProject(id, 'Mon Planning', defaultData(), 'système');
+  } else {
+    /* Vérifier que chaque projet a bien un fichier de données */
+    for (const p of projects) {
+      if (!db.getProjectData(p.id)) {
+        db.saveProject(p.id, p.name, defaultData(), 'système');
+      }
+    }
   }
 }
 ensureDefaultProject();

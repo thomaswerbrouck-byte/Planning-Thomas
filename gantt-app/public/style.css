@@ -456,21 +456,23 @@ tr:hover .row-btn { opacity: 1; }
 .m-sub { margin-top: 7px; padding: 6px 10px; background: #f0f9ff; border-left: 3px solid #38bdf8; border-radius: 5px; font-size: .78rem; }
 
 @media (max-width: 768px) {
-  /* Cacher la sidebar et le mobile-view */
+  /* Cacher la sidebar et le mobile-view (on utilise le gantt normal) */
   #projects-sidebar { display: none !important; }
   #mobile-view      { display: none !important; }
 
   /* Gantt scrollable en touch */
   #gantt-wrap {
     display: block !important;
-    overflow-x: scroll !important;
+    overflow-x: auto !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Cellules et barres lisibles sur mobile */
+  /* Réduire la taille des colonnes figées sur mobile */
+  .cell { height: 36px !important; }
   .cell input, .cell select { font-size: 10px; height: 22px; }
   .row-btn { opacity: 1 !important; }
+  .row-actions { gap: 1px; }
 
   /* Toolbar compact */
   #toolbar { gap: 3px; padding: 4px 8px; overflow-x: auto; flex-wrap: nowrap; }

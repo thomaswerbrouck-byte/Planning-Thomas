@@ -204,7 +204,6 @@ function initAnneeSelect() {
    RENDER
 ══════════════════════════════════════════════════════ */
 function renderAll() {
-  if (isMobile()) { renderMobile(); return; }
   renderGantt();
 }
 

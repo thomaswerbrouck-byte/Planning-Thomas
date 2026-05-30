@@ -137,13 +137,25 @@
   }
 
   async function startApp(pseudo) {
-    /* Charger la liste des plannings */
-    const projects = await fetch('/api/projects').then(r => r.json());
-    renderProjectsList(projects, pseudo);
+    try {
+      /* Charger la liste des plannings */
+      const projects = await fetch('/api/projects').then(r => r.json());
 
-    /* Charger le premier planning */
-    const first = projects[0];
-    await loadProject(first.id, pseudo, true);
+      if (!projects || projects.length === 0) {
+        document.getElementById('gantt-inner').innerHTML =
+          '<div style="padding:40px;color:#ef4444">Erreur : aucun planning trouvé. Rechargez la page.</div>';
+        return;
+      }
+
+      renderProjectsList(projects, pseudo);
+
+      /* Charger le premier planning */
+      await loadProject(projects[0].id, pseudo, true);
+    } catch(err) {
+      console.error('Erreur startApp:', err);
+      document.getElementById('gantt-inner').innerHTML =
+        '<div style="padding:40px;color:#ef4444">Erreur de chargement : ' + err.message + '</div>';
+    }
   }
 
   /* ── Liste des plannings ── */
@@ -181,13 +193,26 @@
   /* ── Charger un planning ── */
   async function loadProject(id, pseudo, first) {
     window._currentProjectId = id;
-    const proj = await fetch(`/api/projects/${id}`).then(r => r.json());
+    let proj;
+    try {
+      proj = await fetch(`/api/projects/${id}`).then(r => r.json());
+    } catch(err) {
+      document.getElementById('gantt-inner').innerHTML =
+        `<div style="padding:40px;color:#ef4444">Erreur réseau : ${err.message}</div>`;
+      return;
+    }
+    if (proj.error) {
+      document.getElementById('gantt-inner').innerHTML =
+        `<div style="padding:40px;color:#ef4444">Erreur projet : ${proj.error}</div>`;
+      return;
+    }
 
-    document.getElementById('project-title').textContent = proj.name;
+    document.getElementById('project-title').textContent = proj.name || 'Planning';
     document.querySelectorAll('.proj-item').forEach(el =>
       el.classList.toggle('active', el.dataset.id === id));
 
-    ganttApp.init(proj.data || {}, pseudo, id);
+    const data = proj.data || {};
+    ganttApp.init(data, pseudo, id);
 
     if (first) {
       ganttSocket.connect(pseudo, id);
