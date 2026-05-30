@@ -123,6 +123,18 @@ body {
 }
 .proj-btn:hover { background: rgba(255,255,255,.2); }
 .proj-btn.del:hover { background: rgba(220,38,38,.5); color: white; }
+#sidebar-resizer {
+  width: 5px;
+  flex-shrink: 0;
+  background: transparent;
+  cursor: col-resize;
+  transition: background .15s;
+  position: relative;
+  z-index: 10;
+}
+#sidebar-resizer:hover,
+#sidebar-resizer.active { background: var(--blue); }
+
 #btn-sidebar-close {
   background: none; border: none; color: rgba(255,255,255,.4);
   font-size: 16px; cursor: pointer; padding: 0 4px;

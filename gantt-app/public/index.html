@@ -30,6 +30,7 @@
     <div id="projects-list"></div>
     <button id="btn-new-project" onclick="creerPlanning()">+ Nouveau planning</button>
   </div>
+  <div id="sidebar-resizer" title="Redimensionner"></div>
   <button id="btn-sidebar-open" onclick="toggleSidebar()" title="Afficher les plannings">›</button>
 
   <!-- ── Main ── -->
@@ -220,6 +221,42 @@
     document.getElementById('projects-sidebar').style.display = 'none';
     document.getElementById('btn-sidebar-open').style.display = 'flex';
   }
+
+  /* ── Redimensionnement sidebar ── */
+  const sidebarEl  = document.getElementById('projects-sidebar');
+  const resizerEl  = document.getElementById('sidebar-resizer');
+  const SIDEBAR_MIN = 120, SIDEBAR_MAX = 480;
+
+  // Restaurer la largeur sauvegardée
+  const savedW = localStorage.getItem('sidebarWidth');
+  if (savedW) sidebarEl.style.width = savedW + 'px';
+
+  let resizing = false, resizeX0 = 0, resizeW0 = 0;
+
+  resizerEl.addEventListener('mousedown', e => {
+    resizing  = true;
+    resizeX0  = e.clientX;
+    resizeW0  = sidebarEl.offsetWidth;
+    resizerEl.classList.add('active');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!resizing) return;
+    const newW = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, resizeW0 + (e.clientX - resizeX0)));
+    sidebarEl.style.width = newW + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!resizing) return;
+    resizing = false;
+    resizerEl.classList.remove('active');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    localStorage.setItem('sidebarWidth', sidebarEl.offsetWidth);
+  });
 
   async function refreshProjectsList() {
     const projects = await fetch('/api/projects').then(r => r.json());
