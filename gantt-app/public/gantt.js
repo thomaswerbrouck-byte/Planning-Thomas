@@ -4,6 +4,7 @@
 
 /* ── État global ── */
 var W = 14, WMIN = 6, WMAX = 36;
+var ROW_H = 42, ROW_HMIN = 24, ROW_HMAX = 80;
 var ANNEE = new Date().getFullYear();
 var jours = [];
 var todayStr = '', todayIdx = -1;
@@ -64,6 +65,7 @@ var ganttApp = {
     if (data.colonnes)    colonnes    = data.colonnes;
     if (data.ANNEE)       ANNEE       = data.ANNEE;
     if (data.W)           W           = data.W;
+    if (data.ROW_H)       ROW_H       = data.ROW_H;
     if (data.collapsed)   collapsed   = data.collapsed;
 
     projets = (data.tasks || []).map(normalizeTask);
@@ -187,7 +189,8 @@ function initJours() {
 }
 
 window.changerAnnee = y => { ANNEE = +y; initJours(); renderAll(); scheduleSave(); };
-window.setZoom = d => { W = Math.max(WMIN, Math.min(WMAX, W+d)); document.getElementById('zoomLbl').textContent = W+'px'; renderAll(); };
+window.setZoom    = d => { W     = Math.max(WMIN,   Math.min(WMAX,   W+d));     document.getElementById('zoomLbl').textContent   = W+'px';     renderAll(); };
+window.setRowH    = d => { ROW_H = Math.max(ROW_HMIN, Math.min(ROW_HMAX, ROW_H+d)); document.getElementById('rowHLbl').textContent = ROW_H+'px'; renderAll(); scheduleSave(); };
 
 function initAnneeSelect() {
   const sel = document.getElementById('anneeSelect');
@@ -288,7 +291,8 @@ function renderGantt() {
   h += `</tbody></table>`;
 
   document.getElementById('gantt-inner').innerHTML = h;
-  document.getElementById('zoomLbl').textContent = W + 'px';
+  document.getElementById('zoomLbl').textContent  = W + 'px';
+  document.getElementById('rowHLbl').textContent  = ROW_H + 'px';
   attachDrag();
 }
 
@@ -302,7 +306,9 @@ function buildRow(p, total, isSub, parentId, lefts) {
   const barLeft = bD * W, barW = (bF - bD + 1) * W;
   const col = getColor(p), colL = hexRgba(col, .12);
   const parts = p.debut.split('-'), lblDate = parts[2]+'/'+parts[1];
-  const rowH  = isSub ? 34 : 42, barH = isSub ? 19 : 24, barTop = isSub ? 7 : 9;
+  const rowH  = isSub ? Math.round(ROW_H * 0.8) : ROW_H;
+  const barH  = Math.max(10, Math.round(rowH * 0.55));
+  const barTop = Math.round((rowH - barH) / 2);
   const rowBg = isSub ? '#f0f9ff' : 'white';
   const bL    = isSub ? 'border-left:3px solid #38bdf8;' : '';
   const techOpts = techniciens.map(t => `<option value="${esc(t.nom)}" ${p.tech===t.nom?'selected':''}>${esc(t.nom)}</option>`).join('');
@@ -876,7 +882,7 @@ async function restaurerVersion(hid) {
    SAVE
 ══════════════════════════════════════════════════════ */
 function getProjectData() {
-  return { tasks: projets, techniciens, colonnes, ANNEE, W, collapsed };
+  return { tasks: projets, techniciens, colonnes, ANNEE, W, ROW_H, collapsed };
 }
 
 function scheduleSave() {
