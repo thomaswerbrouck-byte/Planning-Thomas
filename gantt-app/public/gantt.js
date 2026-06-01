@@ -17,11 +17,15 @@ var ROLES = {
 
 /* ── Codes d'accès — MODIFIER ICI ── */
 window.PASSWORDS = {
-  'Cedric'  : 'cedric',
-  'Thomas'  : 'thomas',
-  'Damien'  : 'damien',
-  'ECO'     : 'eco',
-  'ASEPTIC' : 'aseptic',
+  'Cedric'  : '1702',
+  'Thomas'  : '1702',
+  'Damien'  : '1702',
+  'Denis'   : 'REFERENTS',
+  'Alexis'  : 'REFERENTS',
+  'Stephane': 'REFERENTS',
+  'William' : 'REFERENTS',
+  'ECO'     : 'ECO26',
+  'ASEPTIC' : 'ASEP26',
 };
 
 var userRole = 'viewer';
