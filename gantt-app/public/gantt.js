@@ -966,9 +966,11 @@ window._applyRoleFilter = function() {
     if (vals.length) filtres['tech'] = vals;
   }
 
-  /* Forcer la colonne "Début" visible pour ECO et ASEPTIC */
+  /* Forcer la colonne "Début" visible et masquer "Attribution" pour ECO et ASEPTIC */
   const colDebut = colonnes.find(c => c.key === 'debut');
   if (colDebut) colDebut.visible = true;
+  const colTech = colonnes.find(c => c.key === 'tech');
+  if (colTech) colTech.visible = false;
 
   renderAll();
 };
