@@ -54,6 +54,7 @@
         <span id="users-label">0 connecté</span>
         <div id="users-dots" style="display:flex;gap:3px;margin-left:4px"></div>
       </div>
+      <span id="role-badge" class="admin" style="display:none"></span>
       <span id="save-indicator">✓ Sauvegardé</span>
     </div>
 
@@ -148,12 +149,21 @@
     const p = input.value.trim();
     if (!p) { input.focus(); return; }
     overlay.style.display = 'none';
+
+    /* Appliquer le rôle et afficher le badge */
+    applyRole(p);
+    const badge = document.getElementById('role-badge');
+    const role  = window._userRole;
+    const labels = { admin: '✏ Admin', viewer: '👁 Lecture', eco: '🌿 ECO' };
+    badge.textContent = labels[role] || role;
+    badge.className   = role;
+    badge.style.display = '';
+
     startApp(p);
   }
 
   async function startApp(pseudo) {
     try {
-      /* Charger la liste des plannings */
       const projects = await fetch('/api/projects').then(r => r.json());
 
       if (!projects || projects.length === 0) {
@@ -162,9 +172,15 @@
         return;
       }
 
-      renderProjectsList(projects, pseudo);
+      /* Mode ECO (William) : charger uniquement le planning TTE */
+      if (window._userRole === 'eco') {
+        const tte = projects.find(p => p.name?.toUpperCase().includes('TTE'))
+                 || projects[0];
+        await loadProject(tte.id, pseudo, true);
+        return;
+      }
 
-      /* Charger le premier planning */
+      renderProjectsList(projects, pseudo);
       await loadProject(projects[0].id, pseudo, true);
     } catch(err) {
       console.error('Erreur startApp:', err);
@@ -302,6 +318,9 @@
 
     const data = proj.data || {};
     ganttApp.init(data, pseudo, id);
+
+    /* Forcer le filtre ECO pour William */
+    if (window._userRole === 'eco') window._applyEcoFilter?.();
 
     if (first) {
       ganttSocket.connect(pseudo, id);

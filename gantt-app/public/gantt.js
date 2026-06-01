@@ -2,6 +2,25 @@
    Planning Collaboratif — Gantt Engine
 ══════════════════════════════════════════════════════ */
 
+/* ── Rôles utilisateurs ── */
+var ROLES = {
+  'Cedric'  : 'admin',
+  'Thomas'  : 'admin',
+  'Damien'  : 'admin',
+  'Denis'   : 'viewer',
+  'Alexis'  : 'viewer',
+  'Stephane': 'viewer',
+  'William' : 'eco',
+};
+var userRole = 'viewer';
+
+window.applyRole = function(p) {
+  userRole = ROLES[p] || 'viewer';
+  window._userRole = userRole;
+  if (userRole !== 'admin') document.body.classList.add('read-only');
+  if (userRole === 'eco')   document.body.classList.add('role-eco');
+};
+
 /* ── État global ── */
 var W = 14, WMIN = 6, WMAX = 36;
 var ROW_H = 42, ROW_HMIN = 24, ROW_HMAX = 80;
@@ -639,6 +658,7 @@ window._mobileDetail = id => {
 function attachDrag() {
   document.querySelectorAll('[data-pid]').forEach(el => {
     el.addEventListener('mousedown', e => {
+      if (userRole !== 'admin') return;
       e.stopPropagation(); e.preventDefault();
       const p = getById(el.dataset.pid); if (!p) return;
       dragMode = el.dataset.mode; dragPid = el.dataset.pid;
@@ -715,6 +735,7 @@ function bindEvents() {
 }
 
 window.startColResize = (e, idx) => {
+  if (userRole !== 'admin') return;
   e.stopPropagation(); e.preventDefault();
   colResizing = idx; colResX0 = e.clientX; colResW0 = colonnes[idx].width;
 };
@@ -913,8 +934,17 @@ window.ouvrirFiltre = (key, btn) => {
 };
 
 function _saveFiltres() {
+  if (userRole === 'eco') return; // filtre forcé, pas de sauvegarde
   localStorage.setItem('filtres_' + projectId, JSON.stringify(filtres));
 }
+
+window._applyEcoFilter = function() {
+  const techVals = valeursUniques('tech');
+  const ecoVals  = techVals.filter(v => v.toUpperCase().includes('ECO'));
+  filtres = {};
+  if (ecoVals.length) filtres['tech'] = ecoVals;
+  renderAll();
+};
 
 window.appliquerFiltre = key => {
   const panel = document.getElementById('filtre-panel'); if (!panel) return;

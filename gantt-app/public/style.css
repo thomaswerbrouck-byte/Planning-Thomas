@@ -508,6 +508,38 @@ tr:hover .row-btn { opacity: 1; }
 .m-row { display: flex; justify-content: space-between; font-size: .78rem; color: var(--gray-500); margin-top: 3px; }
 .m-sub { margin-top: 7px; padding: 6px 10px; background: #f0f9ff; border-left: 3px solid #38bdf8; border-radius: 5px; font-size: .78rem; }
 
+/* ─── Rôles ─────────────────────────────── */
+
+/* Lecture seule (viewer + eco) */
+body.read-only #btn-new-project,
+body.read-only #mobile-drawer-new,
+body.read-only .btn-primary,
+body.read-only .btn-success,
+body.read-only .btn-danger,
+body.read-only .row-actions,
+body.read-only .resize-handle { display: none !important; }
+
+body.read-only input,
+body.read-only select { pointer-events: none; background: transparent !important; border-color: transparent !important; }
+
+body.read-only #toolbar .btn { pointer-events: none; opacity: .45; }
+body.read-only #toolbar .btn:not(.btn-primary):not(.btn-success):not(.btn-danger) { pointer-events: auto; opacity: 1; }
+
+/* Badge rôle dans la topbar */
+#role-badge {
+  font-size: .68rem; font-weight: 700; padding: 2px 8px;
+  border-radius: 10px; letter-spacing: .04em; flex-shrink: 0;
+}
+#role-badge.admin  { background: #dcfce7; color: #15803d; }
+#role-badge.viewer { background: #dbeafe; color: #1d4ed8; }
+#role-badge.eco    { background: #fef9c3; color: #a16207; }
+
+/* ECO : masquer complètement la sidebar */
+body.role-eco #projects-sidebar,
+body.role-eco #sidebar-resizer,
+body.role-eco #btn-sidebar-open,
+body.role-eco #mobile-proj-btn { display: none !important; }
+
 @media (max-width: 768px) {
   /* Sidebar cachée, vue mobile activée, gantt caché */
   #projects-sidebar { display: none !important; }
