@@ -298,7 +298,7 @@ function renderGantt() {
       style="position:sticky;top:0;left:${lefts[ci]}px;z-index:40;width:${c.width}px"
       onclick="doSort('${c.key}')">
       ${esc(c.label)}<span style="font-size:7px;margin-left:2px;opacity:${sortCol===c.key?1:.25}">${arrow}</span>
-      <div style="position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;z-index:5" onmousedown="startColResize(event,${globalCi})"></div>
+      <div style="position:absolute;right:-3px;top:0;bottom:0;width:8px;cursor:col-resize;z-index:50" onmousedown="startColResize(event,${globalCi})"></div>
     </td>`;
   }
   for (const mg of mG)
