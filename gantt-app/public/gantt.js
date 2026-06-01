@@ -965,6 +965,11 @@ window._applyRoleFilter = function() {
     const vals = techVals.filter(v => v.toUpperCase().includes('ASEPTIC') || nonAttrib(v));
     if (vals.length) filtres['tech'] = vals;
   }
+
+  /* Forcer la colonne "Début" visible pour ECO et ASEPTIC */
+  const colDebut = colonnes.find(c => c.key === 'debut');
+  if (colDebut) colDebut.visible = true;
+
   renderAll();
 };
 /* Alias pour compatibilité */
