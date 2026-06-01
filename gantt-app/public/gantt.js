@@ -59,7 +59,16 @@ var ganttApp = {
     projectId = pid || 'default';
     filtres   = {};
     sortCol   = null;
+    sortDir   = 1;
     collapsed = {};
+
+    /* Restaurer les filtres et le tri sauvegardés pour ce planning */
+    try {
+      const sf = localStorage.getItem('filtres_' + (pid || 'default'));
+      if (sf) filtres = JSON.parse(sf);
+      const ss = localStorage.getItem('sort_' + (pid || 'default'));
+      if (ss) { const o = JSON.parse(ss); sortCol = o.col; sortDir = o.dir; }
+    } catch(e) {}
 
     if (data.techniciens) techniciens = data.techniciens;
     if (data.colonnes)    colonnes    = data.colonnes.map(c => ({ visible: true, ...c }));
@@ -709,7 +718,11 @@ window.startColResize = (e, idx) => {
   e.stopPropagation(); e.preventDefault();
   colResizing = idx; colResX0 = e.clientX; colResW0 = colonnes[idx].width;
 };
-window.doSort = k => { if (sortCol===k) sortDir*=-1; else { sortCol=k; sortDir=1; } renderAll(); saveNow(); };
+window.doSort = k => {
+  if (sortCol===k) sortDir*=-1; else { sortCol=k; sortDir=1; }
+  localStorage.setItem('sort_' + projectId, JSON.stringify({ col: sortCol, dir: sortDir }));
+  renderAll(); saveNow();
+};
 window.toggleCollapse = pid => { collapsed[pid] = !collapsed[pid]; renderAll(); saveNow(); };
 
 /* ══════════════════════════════════════════════════════
@@ -899,14 +912,19 @@ window.ouvrirFiltre = (key, btn) => {
   setTimeout(() => document.addEventListener('mousedown', fermerFiltreOutside), 50);
 };
 
+function _saveFiltres() {
+  localStorage.setItem('filtres_' + projectId, JSON.stringify(filtres));
+}
+
 window.appliquerFiltre = key => {
   const panel = document.getElementById('filtre-panel'); if (!panel) return;
   const vals = valeursUniques(key);
   const sel  = [...panel.querySelectorAll('[data-val]:checked')].map(cb => cb.dataset.val);
   filtres[key] = sel.length === vals.length ? null : sel;
+  _saveFiltres();
   fermerFiltrePanel(); renderAll();
 };
-window.reinitFiltre = key => { filtres[key] = null; fermerFiltrePanel(); renderAll(); };
+window.reinitFiltre = key => { filtres[key] = null; _saveFiltres(); fermerFiltrePanel(); renderAll(); };
 function fermerFiltrePanel() { document.getElementById('filtre-panel')?.remove(); filtreActif = null; document.removeEventListener('mousedown', fermerFiltreOutside); }
 function fermerFiltreOutside(e) { const p = document.getElementById('filtre-panel'); if (p && !p.contains(e.target) && !e.target.closest('[data-fbtn]')) fermerFiltrePanel(); }
 
