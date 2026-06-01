@@ -429,6 +429,8 @@ select.etat-annule   { color: var(--red);      font-weight: 600; }
 tr:hover .row-btn { opacity: 1; }
 .row-btn-add { background: #0ea5e9; }
 .row-btn-dup { background: var(--orange); }
+.row-btn-link { background: #e2e8f0; color: #64748b; font-size: 8px; }
+.row-btn-link.active { background: #fed7aa; color: #f97316; opacity: 1 !important; }
 .row-btn-del { background: var(--red); }
 
 /* ─── Modal ─────────────────────────────── */

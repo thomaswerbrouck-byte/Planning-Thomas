@@ -101,6 +101,7 @@ function normalizeTask(t) {
   }
   if (!t.debut) t.debut = new Date().toISOString().slice(0, 10);
   if (!t.fin)   t.fin   = t.debut;
+  if (!t.predecesseurs) t.predecesseurs = [];
   return t;
 }
 
@@ -305,6 +306,7 @@ function renderGantt() {
   document.getElementById('zoomLbl').textContent  = W + 'px';
   document.getElementById('rowHLbl').textContent  = ROW_H + 'px';
   attachDrag();
+  drawDependencyArrows();
 }
 
 /* ─ Build one row ────────────────────────────────────── */
@@ -347,11 +349,13 @@ function buildRow(p, total, isSub, parentId, lefts) {
         h += `<div class="row-actions">
           <button class="row-btn row-btn-add" onclick="ajouterSoustache('${p.id}')" title="Sous-tâche">+</button>
           <button class="row-btn row-btn-dup" onclick="dupliquer('${p.id}')" title="Dupliquer">⧉</button>
+          <button class="row-btn row-btn-link${p.predecesseurs?.length?' active':''}" onclick="ouvrirPredecesseurs('${p.id}')" title="Prédécesseurs">🔗</button>
           <button class="row-btn row-btn-del" onclick="supprimer('${p.id}')" title="Supprimer">✕</button>
         </div>`;
       } else {
         h += `<span style="color:#38bdf8;font-size:11px;flex-shrink:0;margin-right:1px">↳</span>`;
         h += `<input type="text" value="${esc(p.nom)}" style="flex:1;min-width:0" onchange="upd('${p.id}','nom',this.value)">`;
+        h += `<button class="row-btn row-btn-link${p.predecesseurs?.length?' active':''}" onclick="ouvrirPredecesseurs('${p.id}')" title="Prédécesseurs">🔗</button>`;
         h += `<button class="row-btn row-btn-del" onclick="supprimerSoustache('${parentId}','${p.id}')" title="Supprimer">✕</button>`;
       }
       h += `</div>`;
@@ -735,6 +739,7 @@ window.ajouterSoustache = parentId => {
 window.supprimerSoustache = (parentId, stId) => {
   const p = projets.find(x => x.id === parentId); if (!p) return;
   p.soustaches = p.soustaches.filter(s => s.id !== stId);
+  _nettoyerPredecesseurs(stId);
   renderAll(); scheduleSave();
 };
 
@@ -752,8 +757,18 @@ window.supprimer = id => {
 
 window.confirmerSupprimer = id => {
   projets = projets.filter(p => p.id !== id);
+  _nettoyerPredecesseurs(id);
   fermerModal(); renderAll(); scheduleSave();
 };
+
+function _nettoyerPredecesseurs(deletedId) {
+  for (const p of projets) {
+    if (p.predecesseurs?.length) p.predecesseurs = p.predecesseurs.filter(x => x !== deletedId);
+    for (const s of (p.soustaches || [])) {
+      if (s.predecesseurs?.length) s.predecesseurs = s.predecesseurs.filter(x => x !== deletedId);
+    }
+  }
+}
 
 window.dupliquer = id => {
   const src = getById(id); if (!src) return;
@@ -1092,6 +1107,157 @@ function _printRow(p, ji, total, WP, idxDeb, idxFin, isSub, vcols) {
   }
   h+=`</td></tr>`;
   return h;
+}
+
+/* ══════════════════════════════════════════════════════
+   PRÉDÉCESSEURS
+══════════════════════════════════════════════════════ */
+window.ouvrirPredecesseurs = (id) => {
+  const task = getById(id); if (!task) return;
+  const current = new Set(task.predecesseurs || []);
+
+  const options = [];
+  for (const p of projets) {
+    if (p.id !== id) options.push({ id: p.id, label: p.nom, indent: false });
+    for (const s of (p.soustaches || [])) {
+      if (s.id !== id) options.push({ id: s.id, label: s.nom, indent: true, parent: p.nom });
+    }
+  }
+
+  let h = `<h3 style="margin-bottom:8px">🔗 Prédécesseurs</h3>
+  <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:12px">Tâche : <strong>${esc(task.nom)}</strong></p>
+  <p style="font-size:.75rem;color:var(--gray-500);margin-bottom:10px">Les tâches sélectionnées doivent se terminer avant que cette tâche puisse commencer (lien Fin→Début).</p>
+  <div style="max-height:300px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:8px;padding:8px">`;
+
+  if (!options.length) {
+    h += `<div style="color:var(--gray-400);font-size:.85rem;text-align:center;padding:16px">Aucune autre tâche disponible</div>`;
+  } else {
+    for (const opt of options) {
+      const checked = current.has(opt.id);
+      h += `<label style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-radius:4px;cursor:pointer;font-size:.83rem" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+        <input type="checkbox" data-predid="${esc(opt.id)}" ${checked ? 'checked' : ''}>
+        ${opt.indent ? `<span style="color:#38bdf8;margin-left:8px;font-size:11px">↳</span>` : `<span style="width:8px;height:8px;border-radius:50%;background:${getColor(getById(opt.id))};flex-shrink:0;display:inline-block"></span>`}
+        <span style="${opt.indent ? 'color:#0369a1' : 'font-weight:500'}">${esc(opt.label)}</span>
+        ${opt.parent ? `<span style="font-size:.7rem;color:var(--gray-400)">(${esc(opt.parent)})</span>` : ''}
+      </label>`;
+    }
+  }
+
+  h += `</div>
+  <div class="m-actions">
+    <button class="btn" onclick="fermerModal()">Annuler</button>
+    <button class="btn btn-primary" onclick="sauverPredecesseurs('${id}')">Enregistrer</button>
+  </div>`;
+
+  ouvrirModal(h);
+};
+
+window.sauverPredecesseurs = (id) => {
+  const task = getById(id); if (!task) return;
+  task.predecesseurs = [...document.querySelectorAll('[data-predid]:checked')].map(cb => cb.dataset.predid);
+  fermerModal();
+  renderAll();
+  scheduleSave();
+};
+
+/* ── Flèches de dépendance SVG ── */
+function drawDependencyArrows() {
+  const inner = document.getElementById('gantt-inner');
+  if (!inner) return;
+  inner.querySelector('.dep-arrows-svg')?.remove();
+
+  const ordered = projFiltresTries();
+  const allRows = [];
+  for (const p of ordered) {
+    allRows.push(p);
+    if (p.soustaches?.length && !collapsed[p.id])
+      for (const s of p.soustaches) if (matchFiltres(s)) allRows.push(s);
+  }
+
+  const hasDeps = allRows.some(t => t.predecesseurs?.length > 0);
+  if (!hasDeps) return;
+
+  const tableEl = inner.querySelector('table');
+  if (!tableEl) return;
+
+  const fw = frozenW();
+  const innerRect = inner.getBoundingClientRect();
+  const arrows = [];
+
+  for (const succ of allRows) {
+    if (!succ.predecesseurs?.length) continue;
+    const succRowEl = inner.querySelector(`tr[data-rowid="${succ.id}"]`);
+    if (!succRowEl) continue;
+    const succRect = succRowEl.getBoundingClientRect();
+    const succY = succRect.top - innerRect.top + succRect.height / 2;
+    const idxSuccD = idxDate(succ.debut);
+    if (idxSuccD < 0) continue;
+    const succX = fw + idxSuccD * W;
+
+    for (const predId of succ.predecesseurs) {
+      const pred = getById(predId);
+      if (!pred) continue;
+      const predRowEl = inner.querySelector(`tr[data-rowid="${predId}"]`);
+      if (!predRowEl) continue;
+      const predRect = predRowEl.getBoundingClientRect();
+      const predY = predRect.top - innerRect.top + predRect.height / 2;
+      const idxPredF = idxDate(pred.fin);
+      if (idxPredF < 0) continue;
+      const predX = fw + (Math.min(jours.length - 1, idxPredF) + 1) * W;
+
+      arrows.push({ predX, predY, succX, succY });
+    }
+  }
+
+  if (!arrows.length) return;
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.classList.add('dep-arrows-svg');
+  svg.setAttribute('width', tableEl.offsetWidth);
+  svg.setAttribute('height', tableEl.offsetHeight);
+  svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:15;overflow:visible';
+
+  const defs = document.createElementNS(NS, 'defs');
+  const marker = document.createElementNS(NS, 'marker');
+  marker.setAttribute('id', 'dep-arrow');
+  marker.setAttribute('markerWidth', '7');
+  marker.setAttribute('markerHeight', '5');
+  marker.setAttribute('refX', '6');
+  marker.setAttribute('refY', '2.5');
+  marker.setAttribute('orient', 'auto');
+  const mpoly = document.createElementNS(NS, 'polygon');
+  mpoly.setAttribute('points', '0 0, 7 2.5, 0 5');
+  mpoly.setAttribute('fill', '#f97316');
+  marker.appendChild(mpoly);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  for (const { predX, predY, succX, succY } of arrows) {
+    const dx = succX - predX;
+    const cx1 = predX + Math.max(20, Math.abs(dx) * 0.45);
+    const cx2 = succX - Math.max(20, Math.abs(dx) * 0.45);
+
+    /* Ombre */
+    const shadow = document.createElementNS(NS, 'path');
+    shadow.setAttribute('d', `M${predX},${predY} C${cx1},${predY} ${cx2},${succY} ${succX},${succY}`);
+    shadow.setAttribute('stroke', 'rgba(0,0,0,0.12)');
+    shadow.setAttribute('stroke-width', '3.5');
+    shadow.setAttribute('fill', 'none');
+    svg.appendChild(shadow);
+
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', `M${predX},${predY} C${cx1},${predY} ${cx2},${succY} ${succX},${succY}`);
+    path.setAttribute('stroke', '#f97316');
+    path.setAttribute('stroke-width', '1.8');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-dasharray', '5,3');
+    path.setAttribute('marker-end', 'url(#dep-arrow)');
+    svg.appendChild(path);
+  }
+
+  inner.style.position = 'relative';
+  inner.appendChild(svg);
 }
 
 /* ══════════════════════════════════════════════════════
