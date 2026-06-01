@@ -68,6 +68,7 @@
       </div>
       <span id="role-badge" class="admin" style="display:none"></span>
       <span id="save-indicator">✓ Sauvegardé</span>
+      <button id="btn-logout" onclick="deconnecter()" title="Se déconnecter">⏻</button>
     </div>
 
     <!-- Toolbar -->
@@ -485,6 +486,19 @@
   /* expose pour gantt.js */
   window._loadProject  = (id) => loadProject(id, window._pseudo, false);
   window._getCurrentId = () => window._currentProjectId;
+
+  window.deconnecter = () => {
+    document.body.classList.remove('read-only', 'role-eco');
+    document.getElementById('role-badge').style.display = 'none';
+    document.getElementById('pseudo-input').value = '';
+    document.getElementById('pwd-wrap').style.display = 'none';
+    document.getElementById('pwd-input').value = '';
+    document.getElementById('btn-join').textContent = 'Rejoindre →';
+    document.getElementById('login-hint').textContent = 'Choisissez votre nom';
+    document.getElementById('login-overlay').style.display = '';
+    window._userRole = 'viewer';
+    window._pseudo = '';
+  };
 
   function toast(msg, type = '') {
     const c = document.getElementById('toast-box');

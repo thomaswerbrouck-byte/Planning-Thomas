@@ -527,6 +527,14 @@ body.read-only .resize-handle { pointer-events: auto; display: block !important;
   font-size: .68rem; font-weight: 700; padding: 2px 8px;
   border-radius: 10px; letter-spacing: .04em; flex-shrink: 0;
 }
+#btn-logout {
+  background: rgba(255,255,255,.1); color: rgba(255,255,255,.7);
+  border: 1px solid rgba(255,255,255,.2); border-radius: 6px;
+  padding: 4px 9px; font-size: 13px; cursor: pointer;
+  transition: background .15s, color .15s; flex-shrink: 0;
+}
+#btn-logout:hover { background: #ef4444; color: white; border-color: #ef4444; }
+
 #role-badge.admin   { background: #dcfce7; color: #15803d; }
 #role-badge.viewer  { background: #dbeafe; color: #1d4ed8; }
 #role-badge.eco     { background: #fef9c3; color: #a16207; }
