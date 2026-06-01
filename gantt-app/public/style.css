@@ -510,29 +510,32 @@ tr:hover .row-btn { opacity: 1; }
 
 /* ─── Rôles ─────────────────────────────── */
 
-/* Lecture seule (viewer + eco) */
+/* Lecture seule (viewer + eco + aseptic) */
 body.read-only #btn-new-project,
 body.read-only #mobile-drawer-new,
-body.read-only .btn-primary,
-body.read-only .btn-success,
-body.read-only .btn-danger,
-body.read-only .row-actions,
-body.read-only .resize-handle { display: none !important; }
+body.read-only .admin-only,
+body.read-only .row-actions { display: none !important; }
 
 body.read-only input,
 body.read-only select { pointer-events: none; background: transparent !important; border-color: transparent !important; }
 
-body.read-only #toolbar .btn { pointer-events: none; opacity: .45; }
-body.read-only #toolbar .btn:not(.btn-primary):not(.btn-success):not(.btn-danger) { pointer-events: auto; opacity: 1; }
+/* Resize colonnes autorisé pour tous */
+body.read-only .resize-handle { pointer-events: auto; display: block !important; }
 
 /* Badge rôle dans la topbar */
 #role-badge {
   font-size: .68rem; font-weight: 700; padding: 2px 8px;
   border-radius: 10px; letter-spacing: .04em; flex-shrink: 0;
 }
-#role-badge.admin  { background: #dcfce7; color: #15803d; }
-#role-badge.viewer { background: #dbeafe; color: #1d4ed8; }
-#role-badge.eco    { background: #fef9c3; color: #a16207; }
+#role-badge.admin   { background: #dcfce7; color: #15803d; }
+#role-badge.viewer  { background: #dbeafe; color: #1d4ed8; }
+#role-badge.eco     { background: #fef9c3; color: #a16207; }
+#role-badge.aseptic { background: #fce7f3; color: #be185d; }
+
+/* Champ mot de passe login */
+#pwd-wrap { margin-bottom: 12px; }
+#pwd-wrap input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-size: .95rem; font-family: inherit; color: var(--gray-900); outline: none; transition: border-color .2s; }
+#pwd-wrap input:focus { border-color: var(--blue); }
 
 /* ECO : masquer complètement la sidebar */
 body.role-eco #projects-sidebar,

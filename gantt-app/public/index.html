@@ -13,17 +13,29 @@
   <div class="login-card">
     <div class="login-logo">📅</div>
     <h1>Planning Collaboratif</h1>
-    <p>Entrez votre pseudo pour rejoindre</p>
-    <select id="pseudo-input">
+    <p id="login-hint">Choisissez votre nom</p>
+    <select id="pseudo-input" onchange="document.getElementById('pwd-wrap').style.display='none';document.getElementById('pwd-input').value='';document.getElementById('btn-join').textContent='Rejoindre →'">
       <option value="">-- Choisissez votre nom --</option>
-      <option>Damien</option>
-      <option>Cedric</option>
-      <option>Thomas</option>
-      <option>Stephane</option>
-      <option>Denis</option>
-      <option>Alexis</option>
-      <option>William</option>
+      <optgroup label="Administration">
+        <option>Damien</option>
+        <option>Cedric</option>
+        <option>Thomas</option>
+      </optgroup>
+      <optgroup label="Visualisation">
+        <option>Stephane</option>
+        <option>Denis</option>
+        <option>Alexis</option>
+        <option>William</option>
+      </optgroup>
+      <optgroup label="Accès filtré">
+        <option>ECO</option>
+        <option>ASEPTIC</option>
+      </optgroup>
     </select>
+    <div id="pwd-wrap" style="display:none">
+      <input type="password" id="pwd-input" placeholder="Code d'accès" autocomplete="off">
+      <div id="pwd-error" style="color:#ef4444;font-size:.75rem;margin-top:4px;display:none">Code incorrect, réessayez.</div>
+    </div>
     <button id="btn-join">Rejoindre →</button>
   </div>
 </div>
@@ -60,20 +72,20 @@
 
     <!-- Toolbar -->
     <div id="toolbar">
-      <button class="btn btn-primary" onclick="ajouterProjet()">
+      <button class="btn btn-primary admin-only" onclick="ajouterProjet()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Ajouter
       </button>
-      <button class="btn btn-success" onclick="sauvegarder()">
+      <button class="btn btn-success admin-only" onclick="sauvegarder()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         Enregistrer
       </button>
       <button class="btn" onclick="scrollAujourdhui()">📍 Aujourd'hui</button>
-      <div class="sep"></div>
-      <button class="btn" onclick="ouvrirConfigTech()">⚙ Attributions</button>
-      <button class="btn" onclick="ouvrirConfigCols()">⚙ Colonnes</button>
+      <div class="sep admin-only"></div>
+      <button class="btn admin-only" onclick="ouvrirConfigTech()">⚙ Attributions</button>
+      <button class="btn admin-only" onclick="ouvrirConfigCols()">⚙ Colonnes</button>
       <button class="btn btn-danger" onclick="ouvrirExportPDF()">📄 Export PDF</button>
-      <button class="btn" onclick="toggleHistory()">🕐 Historique</button>
+      <button class="btn admin-only" onclick="toggleHistory()">🕐 Historique</button>
       <div class="sep"></div>
       <div class="zoom-grp">
         <button onclick="setZoom(-2)">−</button>
@@ -144,17 +156,46 @@
   const overlay = document.getElementById('login-overlay');
   const input   = document.getElementById('pseudo-input');
   document.getElementById('btn-join').onclick = join;
+  document.getElementById('pwd-input').addEventListener('keydown', e => { if (e.key === 'Enter') join(); });
 
   function join() {
     const p = input.value.trim();
     if (!p) { input.focus(); return; }
+
+    /* Vérifier si un code est requis */
+    const pwdRequired = window.PASSWORDS?.[p];
+    if (pwdRequired) {
+      const pwdWrap  = document.getElementById('pwd-wrap');
+      const pwdInput = document.getElementById('pwd-input');
+      const pwdError = document.getElementById('pwd-error');
+
+      if (pwdWrap.style.display === 'none') {
+        /* Première étape : afficher le champ code */
+        pwdWrap.style.display = '';
+        pwdInput.focus();
+        document.getElementById('btn-join').textContent = 'Confirmer →';
+        document.getElementById('login-hint').textContent = 'Entrez votre code d\'accès';
+        return;
+      }
+
+      /* Deuxième étape : vérifier le code */
+      if (pwdInput.value !== pwdRequired) {
+        pwdError.style.display = '';
+        pwdInput.value = '';
+        pwdInput.style.borderColor = '#ef4444';
+        pwdInput.focus();
+        return;
+      }
+      pwdError.style.display = 'none';
+    }
+
     overlay.style.display = 'none';
 
     /* Appliquer le rôle et afficher le badge */
     applyRole(p);
-    const badge = document.getElementById('role-badge');
-    const role  = window._userRole;
-    const labels = { admin: '✏ Admin', viewer: '👁 Lecture', eco: '🌿 ECO' };
+    const badge  = document.getElementById('role-badge');
+    const role   = window._userRole;
+    const labels = { admin: '✏ Admin', viewer: '👁 Lecture', eco: '🌿 ECO', aseptic: '🧪 ASEPTIC' };
     badge.textContent = labels[role] || role;
     badge.className   = role;
     badge.style.display = '';
@@ -172,8 +213,8 @@
         return;
       }
 
-      /* Mode ECO (William) : charger uniquement le planning TTE */
-      if (window._userRole === 'eco') {
+      /* Mode ECO / ASEPTIC : charger uniquement le planning TTE */
+      if (window._userRole === 'eco' || window._userRole === 'aseptic') {
         const tte = projects.find(p => p.name?.toUpperCase().includes('TTE'))
                  || projects[0];
         await loadProject(tte.id, pseudo, true);
@@ -319,8 +360,8 @@
     const data = proj.data || {};
     ganttApp.init(data, pseudo, id);
 
-    /* Forcer le filtre ECO pour William */
-    if (window._userRole === 'eco') window._applyEcoFilter?.();
+    /* Forcer le filtre selon le rôle */
+    if (window._userRole === 'eco' || window._userRole === 'aseptic') window._applyRoleFilter?.();
 
     if (first) {
       ganttSocket.connect(pseudo, id);

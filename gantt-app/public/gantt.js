@@ -10,15 +10,27 @@ var ROLES = {
   'Denis'   : 'viewer',
   'Alexis'  : 'viewer',
   'Stephane': 'viewer',
-  'William' : 'eco',
+  'William' : 'viewer',
+  'ECO'     : 'eco',
+  'ASEPTIC' : 'aseptic',
 };
+
+/* ── Codes d'accès — MODIFIER ICI ── */
+window.PASSWORDS = {
+  'Cedric'  : 'cedric',
+  'Thomas'  : 'thomas',
+  'Damien'  : 'damien',
+  'ECO'     : 'eco',
+  'ASEPTIC' : 'aseptic',
+};
+
 var userRole = 'viewer';
 
 window.applyRole = function(p) {
   userRole = ROLES[p] || 'viewer';
   window._userRole = userRole;
-  if (userRole !== 'admin') document.body.classList.add('read-only');
-  if (userRole === 'eco')   document.body.classList.add('role-eco');
+  if (userRole !== 'admin')   document.body.classList.add('read-only');
+  if (userRole === 'eco' || userRole === 'aseptic') document.body.classList.add('role-eco');
 };
 
 /* ── État global ── */
@@ -735,7 +747,6 @@ function bindEvents() {
 }
 
 window.startColResize = (e, idx) => {
-  if (userRole !== 'admin') return;
   e.stopPropagation(); e.preventDefault();
   colResizing = idx; colResX0 = e.clientX; colResW0 = colonnes[idx].width;
 };
@@ -938,13 +949,22 @@ function _saveFiltres() {
   localStorage.setItem('filtres_' + projectId, JSON.stringify(filtres));
 }
 
-window._applyEcoFilter = function() {
-  const techVals = valeursUniques('tech');
-  const ecoVals  = techVals.filter(v => v.toUpperCase().includes('ECO'));
+window._applyRoleFilter = function() {
   filtres = {};
-  if (ecoVals.length) filtres['tech'] = ecoVals;
+  const techVals = valeursUniques('tech');
+  const nonAttrib = v => !v || v.toLowerCase().includes('non') || v.toLowerCase().includes('attrib');
+
+  if (userRole === 'eco') {
+    const vals = techVals.filter(v => v.toUpperCase().includes('ECO') || nonAttrib(v));
+    if (vals.length) filtres['tech'] = vals;
+  } else if (userRole === 'aseptic') {
+    const vals = techVals.filter(v => v.toUpperCase().includes('ASEPTIC') || nonAttrib(v));
+    if (vals.length) filtres['tech'] = vals;
+  }
   renderAll();
 };
+/* Alias pour compatibilité */
+window._applyEcoFilter = window._applyRoleFilter;
 
 window.appliquerFiltre = key => {
   const panel = document.getElementById('filtre-panel'); if (!panel) return;
