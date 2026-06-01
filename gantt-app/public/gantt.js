@@ -667,6 +667,7 @@ function bindEvents() {
           p.fin = dateFromIdx(Math.max(dragIdxD0, Math.min(jours.length-1, dragIdxF0+dC)));
         }
       }
+      if (p) propagerDates(dragPid);
       dragPid = null; dragMode = null; renderAll(); scheduleSave();
     }
     if (colResizing !== null) { colResizing = null; saveNow(); }
@@ -770,6 +771,60 @@ function _nettoyerPredecesseurs(deletedId) {
   }
 }
 
+/* ── Helpers date ── */
+function addDays(dateStr, n) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function daysBetween(d1, d2) {
+  return Math.max(0, Math.round((new Date(d2) - new Date(d1)) / 86400000));
+}
+
+/* ── Auto-scheduling : pousse les successeurs en cascade ── */
+function propagerDates(taskId, visited = new Set()) {
+  if (visited.has(taskId)) return;
+  visited.add(taskId);
+  const task = getById(taskId); if (!task) return;
+
+  const tousLesItems = [];
+  for (const p of projets) {
+    tousLesItems.push(p);
+    for (const s of (p.soustaches || [])) tousLesItems.push(s);
+  }
+
+  for (const succ of tousLesItems) {
+    if (!succ.predecesseurs?.includes(taskId)) continue;
+    const minDebut = addDays(task.fin, 1);
+    if (succ.debut < minDebut) {
+      const duree = daysBetween(succ.debut, succ.fin);
+      succ.debut = minDebut;
+      succ.fin   = addDays(minDebut, duree);
+      propagerDates(succ.id, visited);
+    }
+  }
+}
+
+/* ── Détection de cycle : peut-on atteindre targetId depuis fromId ? ── */
+function peutAtteindre(fromId, targetId, visited = new Set()) {
+  if (fromId === targetId) return true;
+  if (visited.has(fromId)) return false;
+  visited.add(fromId);
+
+  const tousLesItems = [];
+  for (const p of projets) {
+    tousLesItems.push(p);
+    for (const s of (p.soustaches || [])) tousLesItems.push(s);
+  }
+
+  for (const t of tousLesItems) {
+    if (t.predecesseurs?.includes(fromId)) {
+      if (peutAtteindre(t.id, targetId, visited)) return true;
+    }
+  }
+  return false;
+}
+
 window.dupliquer = id => {
   const src = getById(id); if (!src) return;
   const copy = JSON.parse(JSON.stringify(src));
@@ -784,6 +839,7 @@ window.upd = (id, champ, val) => {
   const p = getById(id); if (!p) return;
   p[champ] = val;
   if (p.debut > p.fin) p.fin = p.debut;
+  if (champ === 'fin' || champ === 'debut') propagerDates(id);
   renderAll(); scheduleSave();
 };
 
@@ -1154,8 +1210,20 @@ window.ouvrirPredecesseurs = (id) => {
 
 window.sauverPredecesseurs = (id) => {
   const task = getById(id); if (!task) return;
-  task.predecesseurs = [...document.querySelectorAll('[data-predid]:checked')].map(cb => cb.dataset.predid);
+  const newPreds = [...document.querySelectorAll('[data-predid]:checked')].map(cb => cb.dataset.predid);
+
+  const cycleNoms = newPreds
+    .filter(predId => peutAtteindre(id, predId))
+    .map(predId => getById(predId)?.nom || predId);
+
+  if (cycleNoms.length) {
+    toast(`Cycle détecté — impossible : "${cycleNoms.join(', ')}"`, 'err');
+    return;
+  }
+
+  task.predecesseurs = newPreds;
   fermerModal();
+  propagerDates(id);
   renderAll();
   scheduleSave();
 };
