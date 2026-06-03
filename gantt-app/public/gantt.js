@@ -1487,6 +1487,159 @@ function drawDependencyArrows() {
 }
 
 /* ══════════════════════════════════════════════════════
+   EXPORT EXCEL
+══════════════════════════════════════════════════════ */
+window.ouvrirExportExcel = () => {
+  const dDef = ANNEE+'-01-01', fDef = ANNEE+'-12-31';
+  ouvrirModal(`
+    <h3>📊 Export Excel</h3>
+    <p style="font-size:.83rem;color:var(--gray-500);margin-bottom:14px">Sélectionnez la plage de dates à exporter.</p>
+    <div class="field"><label>Date de début</label><input type="date" id="xlD" value="${dDef}"></div>
+    <div class="field"><label>Date de fin</label><input type="date" id="xlF" value="${fDef}"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">
+      ${[['T1','-01-01','-03-31'],['T2','-04-01','-06-30'],['T3','-07-01','-09-30'],['T4','-10-01','-12-31'],['Année','-01-01','-12-31']]
+        .map(([l,d,f]) => `<button class="btn" onclick="document.getElementById('xlD').value='${ANNEE+d}';document.getElementById('xlF').value='${ANNEE+f}'">${l}</button>`).join('')}
+    </div>
+    <div style="font-size:.77rem;color:var(--gray-500);background:var(--gray-50);border-radius:7px;padding:9px 12px;margin-bottom:4px">
+      Le fichier s'ouvre directement dans <b>Excel</b> avec les barres colorées.
+    </div>
+    <div class="m-actions">
+      <button class="btn" onclick="fermerModal()">Annuler</button>
+      <button class="btn" style="background:#16a34a;color:white" onclick="lancerExcel()">📊 Générer</button>
+    </div>`);
+};
+
+window.lancerExcel = () => {
+  const d = document.getElementById('xlD').value;
+  const f = document.getElementById('xlF').value;
+  if (!d || !f || d > f) { toast('Dates invalides', 'err'); return; }
+  fermerModal();
+  const ji = jours.filter(j => j.clef >= d && j.clef <= f);
+  if (!ji.length) { toast('Aucun jour dans cette plage', 'err'); return; }
+  _buildExcelFile(d, f, ji);
+};
+
+function _buildExcelFile(d, f, ji) {
+  const DWLET = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
+  const MNOMS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const ordered = projFiltresTries();
+  const vcols   = visibleCols();
+  const idxDeb  = idxDate(d);
+  const idxFin  = idxDate(f);
+  const total   = ji.length;
+
+  /* Groupes mois */
+  let mG = [], curM = -1, cnt = 0;
+  for (const j of ji) {
+    if (j.moisIdx !== curM) { if (cnt) mG.push({ nom: MNOMS[curM], count: cnt }); curM = j.moisIdx; cnt = 1; } else cnt++;
+  }
+  if (cnt) mG.push({ nom: MNOMS[curM], count: cnt });
+
+  const css = `
+    table{border-collapse:collapse;font-family:Calibri,Arial;font-size:8pt}
+    td{border:0.5px solid #e2e8f0;vertical-align:middle;padding:1px 3px;white-space:nowrap}
+    .thf{background:#1e3a8a;color:white;font-weight:700;text-align:center;font-size:7.5pt}
+    .wk{background:#eef2ff}
+    .tod{background:#fef9c3}
+  `;
+
+  let h = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><style>${css}</style></head><body>
+<div style="font-family:Calibri;margin-bottom:6px">
+  <b style="font-size:13pt">Planning — Export</b><br>
+  <span style="font-size:8pt;color:#64748b">Période : ${d.split('-').reverse().join('/')} → ${f.split('-').reverse().join('/')} | ${total} jours | ${ordered.length} opération${ordered.length>1?'s':''} | Édité le ${new Date().toLocaleDateString('fr-FR')}</span>
+</div>
+<table><colgroup>`;
+
+  for (const c of vcols) h += `<col style="width:${Math.round(c.width*0.75)}pt">`;
+  for (let i = 0; i < total; i++) h += `<col style="width:${total<=62?9:7}pt">`;
+  h += `</colgroup><thead>`;
+
+  /* Ligne mois */
+  h += `<tr style="height:14pt">`;
+  for (const c of vcols) h += `<td rowspan="3" class="thf" style="width:${c.width}px">${esc(c.label)}</td>`;
+  for (const mg of mG) h += `<td colspan="${mg.count}" class="thf" style="background:#1e3a8a!important">${mg.nom}</td>`;
+  h += `</tr>`;
+
+  /* Ligne numéros */
+  h += `<tr style="height:12pt">`;
+  for (const j of ji) {
+    const isTod = j.clef === todayStr;
+    const bg = isTod ? '#fef9c3' : j.wk ? '#c7d2fe' : '#2d4fa0';
+    const fc = isTod ? '#92400e' : 'white';
+    h += `<td style="background:${bg};color:${fc};font-weight:700;text-align:center;font-size:7pt">${j.num}</td>`;
+  }
+  h += `</tr>`;
+
+  /* Ligne noms jours */
+  h += `<tr style="height:10pt">`;
+  for (const j of ji) {
+    const bg = j.clef===todayStr ? '#fef3c7' : j.wk ? '#eef2ff' : '#dbeafe';
+    h += `<td style="background:${bg};text-align:center;font-size:6pt;color:#475569">${DWLET[j.dw]}</td>`;
+  }
+  h += `</tr></thead><tbody>`;
+
+  for (const p of ordered) {
+    h += _excelRow(p, ji, vcols, idxDeb, idxFin, false);
+    if (p.soustaches?.length && !collapsed[p.id])
+      for (const s of soustachesTries(p)) h += _excelRow(s, ji, vcols, idxDeb, idxFin, true);
+  }
+
+  h += `</tbody></table></body></html>`;
+
+  const blob = new Blob(['﻿' + h], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `planning-${new Date().toISOString().slice(0,10)}.xls`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Export Excel généré', 'ok');
+}
+
+function _excelRow(p, ji, vcols, idxDeb, idxFin, isSub) {
+  const col   = getColor(p);
+  const colL  = hexRgba(col, 0.18);
+  const ec    = etatColor(p.etat);
+  const rowBg = isSub ? '#f0f9ff' : 'white';
+  const rowH  = isSub ? '12pt' : '15pt';
+  const bL    = isSub ? 'border-left:3px solid #38bdf8;' : '';
+  const pD    = idxDate(p.debut), pF = idxDate(p.fin);
+
+  let h = `<tr style="height:${rowH}">`;
+
+  for (const c of vcols) {
+    const ck = c.key;
+    let val = '', st = `background:${rowBg};${bL}`;
+    if (ck === 'nom') {
+      val = (isSub ? '↳ ' : '') + esc(p.nom);
+      st += isSub ? 'color:#0369a1;padding-left:10px;' : 'font-weight:600;';
+    }
+    else if (ck === 'client') val = esc(p.client);
+    else if (ck === 'debut')  val = p.debut.split('-').slice(1).reverse().join('/');
+    else if (ck === 'fin')    val = p.fin.split('-').slice(1).reverse().join('/');
+    else if (ck === 'tech')   { val = esc(p.tech);           st += `color:${col};font-weight:600;`; }
+    else if (ck === 'etat')   { val = esc(p.etat||'À venir'); st += `color:${ec};font-weight:600;`; }
+    h += `<td style="${st}">${val}</td>`;
+  }
+
+  /* Cellules jours */
+  for (const j of ji) {
+    const gi    = idxDate(j.clef);
+    const inBar = gi >= pD && gi <= pF;
+    let bg;
+    if (inBar)              bg = isSub ? hexRgba(col, 0.65) : col;
+    else if (j.clef===todayStr) bg = '#fef9c3';
+    else if (j.wk)          bg = '#eef2ff';
+    else                    bg = 'white';
+    h += `<td style="background:${bg}"></td>`;
+  }
+
+  h += `</tr>`;
+  return h;
+}
+
+/* ══════════════════════════════════════════════════════
    TOAST
 ══════════════════════════════════════════════════════ */
 function toast(msg, type = '') {
