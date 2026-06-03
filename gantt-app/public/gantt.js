@@ -714,14 +714,16 @@ function bindEvents() {
       if (p) {
         const dC = Math.round((e.clientX - dragX0) / W);
         if (dragMode === 'move') {
-          const dur = dragIdxF0 - dragIdxD0;
+          const dur  = dragIdxF0 - dragIdxD0;
           const newD = Math.max(0, Math.min(jours.length-1-dur, dragIdxD0+dC));
+          const delta = newD - dragIdxD0;          // nb de jours décalés
           p.debut = dateFromIdx(newD); p.fin = dateFromIdx(newD+dur);
+          if (delta !== 0) deplacerSuccesseurs(dragPid, delta); // cascade même delta
         } else {
           p.fin = dateFromIdx(Math.max(dragIdxD0, Math.min(jours.length-1, dragIdxF0+dC)));
+          propagerDates(dragPid); // resize : pousser si chevauchement
         }
       }
-      if (p) propagerDates(dragPid);
       dragPid = null; dragMode = null; renderAll(); scheduleSave();
     }
     if (colResizing !== null) { colResizing = null; saveNow(); }
@@ -872,6 +874,28 @@ function propagerDates(taskId, visited = new Set()) {
       succ.fin   = addDays(minDebut, duree);
       propagerDates(succ.id, visited);
     }
+  }
+}
+
+/* ── Déplace les successeurs du même delta (lors d'un drag) ── */
+function deplacerSuccesseurs(taskId, deltaIdx, visited = new Set()) {
+  if (visited.has(taskId)) return;
+  visited.add(taskId);
+
+  const tousLesItems = [];
+  for (const p of projets) {
+    tousLesItems.push(p);
+    for (const s of (p.soustaches || [])) tousLesItems.push(s);
+  }
+
+  for (const succ of tousLesItems) {
+    if (!succ.predecesseurs?.includes(taskId)) continue;
+    const idxD = idxDate(succ.debut), idxF = idxDate(succ.fin);
+    const newD = Math.max(0, Math.min(jours.length-1, idxD + deltaIdx));
+    const newF = Math.max(0, Math.min(jours.length-1, idxF + deltaIdx));
+    succ.debut = dateFromIdx(newD);
+    succ.fin   = dateFromIdx(newF);
+    deplacerSuccesseurs(succ.id, deltaIdx, visited);
   }
 }
 
@@ -1339,7 +1363,7 @@ function drawDependencyArrows() {
   for (const p of ordered) {
     allRows.push(p);
     if (p.soustaches?.length && !collapsed[p.id])
-      for (const s of p.soustaches) if (matchFiltres(s)) allRows.push(s);
+      for (const s of soustachesTries(p)) if (matchFiltres(s)) allRows.push(s);
   }
 
   const hasDeps = allRows.some(t => t.predecesseurs?.length > 0);
@@ -1348,19 +1372,21 @@ function drawDependencyArrows() {
   const tableEl = inner.querySelector('table');
   if (!tableEl) return;
 
-  const fw = frozenW();
+  const fw       = frozenW();
+  const svgW     = tableEl.offsetWidth - fw;
+  const svgH     = tableEl.offsetHeight;
   const innerRect = inner.getBoundingClientRect();
-  const arrows = [];
+  const arrows   = [];
 
   for (const succ of allRows) {
     if (!succ.predecesseurs?.length) continue;
     const succRowEl = inner.querySelector(`tr[data-rowid="${succ.id}"]`);
     if (!succRowEl) continue;
     const succRect = succRowEl.getBoundingClientRect();
-    const succY = succRect.top - innerRect.top + succRect.height / 2;
+    const succY    = succRect.top - innerRect.top + succRect.height / 2;
     const idxSuccD = idxDate(succ.debut);
     if (idxSuccD < 0) continue;
-    const succX = fw + idxSuccD * W;
+    const succX = idxSuccD * W;           // coordonnées relatives à fw
 
     for (const predId of succ.predecesseurs) {
       const pred = getById(predId);
@@ -1368,10 +1394,10 @@ function drawDependencyArrows() {
       const predRowEl = inner.querySelector(`tr[data-rowid="${predId}"]`);
       if (!predRowEl) continue;
       const predRect = predRowEl.getBoundingClientRect();
-      const predY = predRect.top - innerRect.top + predRect.height / 2;
+      const predY    = predRect.top - innerRect.top + predRect.height / 2;
       const idxPredF = idxDate(pred.fin);
       if (idxPredF < 0) continue;
-      const predX = fw + (Math.min(jours.length - 1, idxPredF) + 1) * W;
+      const predX = (Math.min(jours.length - 1, idxPredF) + 1) * W;   // relatif à fw
 
       arrows.push({ predX, predY, succX, succY });
     }
@@ -1379,14 +1405,17 @@ function drawDependencyArrows() {
 
   if (!arrows.length) return;
 
-  const NS = 'http://www.w3.org/2000/svg';
+  const NS  = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(NS, 'svg');
   svg.classList.add('dep-arrows-svg');
-  svg.setAttribute('width', tableEl.offsetWidth);
-  svg.setAttribute('height', tableEl.offsetHeight);
-  svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:15;overflow:visible';
+  svg.setAttribute('width',  svgW);
+  svg.setAttribute('height', svgH);
+  /* Positionné juste après les colonnes fixes — les flèches ne chevauchent jamais le tableau */
+  svg.style.cssText = `position:absolute;top:0;left:${fw}px;pointer-events:none;z-index:15;overflow:hidden`;
 
   const defs = document.createElementNS(NS, 'defs');
+
+  /* Tête de flèche */
   const marker = document.createElementNS(NS, 'marker');
   marker.setAttribute('id', 'dep-arrow');
   marker.setAttribute('markerWidth', '7');
@@ -1399,31 +1428,45 @@ function drawDependencyArrows() {
   mpoly.setAttribute('fill', '#f97316');
   marker.appendChild(mpoly);
   defs.appendChild(marker);
+
+  /* ClipPath : limite les flèches à la zone gantt visible */
+  const clip = document.createElementNS(NS, 'clipPath');
+  clip.setAttribute('id', 'gantt-area-clip');
+  const clipR = document.createElementNS(NS, 'rect');
+  clipR.setAttribute('x', 0); clipR.setAttribute('y', 0);
+  clipR.setAttribute('width', svgW); clipR.setAttribute('height', svgH);
+  clip.appendChild(clipR);
+  defs.appendChild(clip);
   svg.appendChild(defs);
 
+  /* Groupe clippé contenant toutes les flèches */
+  const g = document.createElementNS(NS, 'g');
+  g.setAttribute('clip-path', 'url(#gantt-area-clip)');
+
   for (const { predX, predY, succX, succY } of arrows) {
-    const dx = succX - predX;
+    const dx  = succX - predX;
     const cx1 = predX + Math.max(20, Math.abs(dx) * 0.45);
     const cx2 = succX - Math.max(20, Math.abs(dx) * 0.45);
+    const d   = `M${predX},${predY} C${cx1},${predY} ${cx2},${succY} ${succX},${succY}`;
 
-    /* Ombre */
     const shadow = document.createElementNS(NS, 'path');
-    shadow.setAttribute('d', `M${predX},${predY} C${cx1},${predY} ${cx2},${succY} ${succX},${succY}`);
+    shadow.setAttribute('d', d);
     shadow.setAttribute('stroke', 'rgba(0,0,0,0.12)');
     shadow.setAttribute('stroke-width', '3.5');
     shadow.setAttribute('fill', 'none');
-    svg.appendChild(shadow);
+    g.appendChild(shadow);
 
     const path = document.createElementNS(NS, 'path');
-    path.setAttribute('d', `M${predX},${predY} C${cx1},${predY} ${cx2},${succY} ${succX},${succY}`);
+    path.setAttribute('d', d);
     path.setAttribute('stroke', '#f97316');
     path.setAttribute('stroke-width', '1.8');
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke-dasharray', '5,3');
     path.setAttribute('marker-end', 'url(#dep-arrow)');
-    svg.appendChild(path);
+    g.appendChild(path);
   }
 
+  svg.appendChild(g);
   inner.style.position = 'relative';
   inner.appendChild(svg);
 }
