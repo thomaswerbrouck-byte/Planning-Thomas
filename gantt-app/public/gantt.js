@@ -1353,10 +1353,25 @@ window.sauverPredecesseurs = (id) => {
 };
 
 /* ── Flèches de dépendance SVG ── */
+var showArrows = true;
+
+window.toggleArrows = () => {
+  showArrows = !showArrows;
+  const btn = document.getElementById('btn-toggle-arrows');
+  if (btn) {
+    btn.style.opacity    = showArrows ? '' : '.45';
+    btn.style.textDecoration = showArrows ? '' : 'line-through';
+  }
+  const svg = document.querySelector('.dep-arrows-svg');
+  if (svg) svg.style.display = showArrows ? '' : 'none';
+  if (showArrows) drawDependencyArrows();
+};
+
 function drawDependencyArrows() {
   const inner = document.getElementById('gantt-inner');
   if (!inner) return;
   inner.querySelector('.dep-arrows-svg')?.remove();
+  if (!showArrows) return;
 
   const ordered = projFiltresTries();
   const allRows = [];
