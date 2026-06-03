@@ -1192,8 +1192,21 @@ window.ouvrirExportPDF = () => {
       ${[['T1','-01-01','-03-31'],['T2','-04-01','-06-30'],['T3','-07-01','-09-30'],['T4','-10-01','-12-31'],['Année','-01-01','-12-31']]
         .map(([l,d,f]) => `<button class="btn" onclick="document.getElementById('pdfD').value='${ANNEE+d}';document.getElementById('pdfF').value='${ANNEE+f}'">${l}</button>`).join('')}
     </div>
-    <div style="font-size:.77rem;color:var(--gray-500);background:var(--gray-50);border-radius:7px;padding:9px 12px;margin-bottom:4px">
-      Dans la fenêtre d'impression, choisissez <b>« Enregistrer en PDF »</b>. Format recommandé : <b>A4 Paysage</b>.
+    <div class="field" style="margin-top:6px">
+      <label>Format papier</label>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.85rem">
+          <input type="radio" name="pdfFmt" id="pdfA4" value="A4" checked> A4 Paysage
+          <span style="font-size:.72rem;color:var(--gray-400)">(297×210mm)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.85rem">
+          <input type="radio" name="pdfFmt" id="pdfA3" value="A3"> A3 Paysage
+          <span style="font-size:.72rem;color:var(--gray-400)">(420×297mm)</span>
+        </label>
+      </div>
+    </div>
+    <div style="font-size:.77rem;color:var(--gray-500);background:var(--gray-50);border-radius:7px;padding:9px 12px;margin-bottom:4px;margin-top:8px">
+      Dans la fenêtre d'impression, choisissez <b>« Enregistrer en PDF »</b> et vérifiez que le format correspond.
     </div>
     <div class="m-actions">
       <button class="btn" onclick="fermerModal()">Annuler</button>
@@ -1202,24 +1215,28 @@ window.ouvrirExportPDF = () => {
 };
 
 window.lancerPDF = () => {
-  const d = document.getElementById('pdfD').value, f = document.getElementById('pdfF').value;
+  const d   = document.getElementById('pdfD').value;
+  const f   = document.getElementById('pdfF').value;
+  const fmt = document.querySelector('input[name="pdfFmt"]:checked')?.value || 'A4';
   if (!d||!f||d>f) { toast('Dates invalides', 'err'); return; }
   fermerModal();
   const joursImpr = jours.filter(j => j.clef >= d && j.clef <= f);
   if (!joursImpr.length) { toast('Aucun jour dans cette plage', 'err'); return; }
-  const win = _buildPrintWindow(d, f, joursImpr);
+  const win = _buildPrintWindow(d, f, joursImpr, fmt);
   setTimeout(() => { try { win.focus(); win.print(); } catch(e){} }, 800);
 };
 
-function _buildPrintWindow(d, f, ji) {
+function _buildPrintWindow(d, f, ji, fmt = 'A4') {
   const DWLET = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
   const MNOMS = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
   const ordered = projFiltresTries(), total = ji.length;
   const WP = total<=31?11:total<=62?9:total<=93?8:total<=186?7:6;
   const idxDeb = idxDate(d), idxFin = idxDate(f);
-  const vcols = visibleCols();                          // ← colonnes visibles uniquement
+  const vcols = visibleCols();
   const fW = frozenW(), totalW = fW + total*WP;
-  const zoom = Math.min(1, Math.floor((1070/totalW)*1000)/1000);
+  /* A4 paysage ≈ 1070px utiles, A3 paysage ≈ 1540px utiles (après marges) */
+  const pageW = fmt === 'A3' ? 1540 : 1070;
+  const zoom  = Math.min(1, Math.floor((pageW/totalW)*1000)/1000);
 
   let mG=[],curM=-1,cnt=0;
   for(const j of ji){if(j.moisIdx!==curM){if(cnt)mG.push({nom:MNOMS[curM],moisIdx:curM,count:cnt});curM=j.moisIdx;cnt=1;}else cnt++;}
@@ -1228,7 +1245,7 @@ function _buildPrintWindow(d, f, ji) {
   for(const j of ji){if(j.sem!==curS){if(cnt)sG.push({sem:curS,count:cnt});curS=j.sem;cnt=1;}else cnt++;}
   if(cnt)sG.push({sem:curS,count:cnt});
 
-  const css = `*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{background:white;color:#1e293b}table{border-collapse:separate;border-spacing:0;table-layout:fixed}td{overflow:visible;vertical-align:middle;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}thead{display:table-header-group}tr{page-break-inside:avoid;break-inside:avoid}.thf{font-size:7.5px;font-weight:700;text-align:center;color:white!important;background:#1e3a8a!important;border:1px solid rgba(255,255,255,.15);padding:2px 4px;white-space:nowrap;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.cf{font-size:7.5px;color:#374151;background:white!important;border-right:0.5px solid #e2e8f0;border-bottom:0.5px solid #e2e8f0;padding:1px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:18px}.csf{font-size:7px;color:#0369a1!important;background:#f0f9ff!important;border-left:2px solid #38bdf8;border-right:0.5px solid #e2e8f0;border-bottom:0.5px solid #e2e8f0;padding:1px 3px;height:15px}@media print{@page{size:A4 landscape;margin:10mm 8mm 12mm 8mm}}`;
+  const css = `*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{background:white;color:#1e293b}table{border-collapse:separate;border-spacing:0;table-layout:fixed}td{overflow:visible;vertical-align:middle;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}thead{display:table-header-group}tr{page-break-inside:avoid;break-inside:avoid}.thf{font-size:7.5px;font-weight:700;text-align:center;color:white!important;background:#1e3a8a!important;border:1px solid rgba(255,255,255,.15);padding:2px 4px;white-space:nowrap;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.cf{font-size:7.5px;color:#374151;background:white!important;border-right:0.5px solid #e2e8f0;border-bottom:0.5px solid #e2e8f0;padding:1px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:18px}.csf{font-size:7px;color:#0369a1!important;background:#f0f9ff!important;border-left:2px solid #38bdf8;border-right:0.5px solid #e2e8f0;border-bottom:0.5px solid #e2e8f0;padding:1px 3px;height:15px}@media print{@page{size:${fmt} landscape;margin:10mm 8mm 12mm 8mm}}`;
 
   const win = window.open('','_print','width=1400,height=900');
   let ph = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Planning — ${d} / ${f}</title><style>${css}</style></head><body>`;
