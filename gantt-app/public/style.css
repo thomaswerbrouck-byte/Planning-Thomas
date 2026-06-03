@@ -240,25 +240,34 @@ body {
 .sep { width: 1px; height: 24px; background: var(--gray-200); margin: 0 2px; }
 
 .zoom-grp {
-  display: flex; align-items: center; gap: 2px;
-  border: 1px solid var(--gray-200); border-radius: 7px;
-  overflow: hidden;
+  display: flex; align-items: center; gap: 0;
+  border: 1px solid var(--gray-200); border-radius: 6px;
+  overflow: hidden; height: 26px;
+}
+.zoom-lbl {
+  font-size: .68rem; color: var(--gray-500); font-weight: 600;
+  padding: 0 7px; border-right: 1px solid var(--gray-200);
+  background: var(--gray-50); white-space: nowrap;
+  display: flex; align-items: center; height: 100%;
+  letter-spacing: -.01em;
 }
 .zoom-grp button {
-  border: none; background: white; padding: 6px 10px;
-  font-size: 14px; cursor: pointer; color: var(--gray-700);
+  border: none; border-left: 1px solid var(--gray-200);
+  background: white; padding: 0 8px;
+  font-size: 13px; cursor: pointer; color: var(--gray-700);
   transition: background .1s; font-family: inherit;
+  height: 100%; line-height: 1;
 }
 .zoom-grp button:hover { background: var(--gray-100); }
-.zoom-grp span { font-size: .78rem; min-width: 32px; text-align: center; color: var(--gray-500); font-weight: 500; }
+.zoom-grp span:not(.zoom-lbl) { font-size: .72rem; min-width: 28px; text-align: center; color: var(--gray-700); font-weight: 600; padding: 0 2px; }
 
 .year-sel {
   display: flex; align-items: center; gap: 5px;
-  border: 1px solid var(--gray-200); border-radius: 7px;
-  padding: 5px 10px; background: white;
+  border: 1px solid var(--gray-200); border-radius: 6px;
+  padding: 0 10px; background: white; height: 26px;
 }
-.year-sel span { font-size: .78rem; color: var(--gray-500); }
-.year-sel select { border: none; background: transparent; font-size: .82rem; color: var(--gray-900); cursor: pointer; outline: none; font-family: inherit; }
+.year-sel span { font-size: .68rem; color: var(--gray-500); font-weight: 600; white-space: nowrap; }
+.year-sel select { border: none; background: transparent; font-size: .78rem; color: var(--gray-900); cursor: pointer; outline: none; font-family: inherit; }
 
 #save-indicator {
   font-size: .75rem; color: var(--green);

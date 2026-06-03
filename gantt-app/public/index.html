@@ -88,13 +88,15 @@
       <button class="btn admin-only" onclick="toggleHistory()">🕐 Historique</button>
       <div class="sep"></div>
       <div class="zoom-grp">
+        <span class="zoom-lbl">Largeur Gantt</span>
         <button onclick="setZoom(-2)">−</button>
         <span id="zoomLbl">14px</span>
         <button onclick="setZoom(2)">+</button>
       </div>
-      <div class="zoom-grp" title="Hauteur des lignes">
+      <div class="zoom-grp">
+        <span class="zoom-lbl">Hauteur ligne</span>
         <button onclick="setRowH(-4)">−</button>
-        <span id="rowHLbl" style="min-width:36px">42px</span>
+        <span id="rowHLbl" style="min-width:30px">42px</span>
         <button onclick="setRowH(4)">+</button>
       </div>
       <div class="year-sel">
