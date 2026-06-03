@@ -407,6 +407,7 @@ function buildRow(p, total, isSub, parentId, lefts) {
       } else {
         h += `<span style="color:#38bdf8;font-size:11px;flex-shrink:0;margin-right:1px">↳</span>`;
         h += `<input type="text" value="${esc(p.nom)}" style="flex:1;min-width:0" onchange="upd('${p.id}','nom',this.value)">`;
+        h += `<button class="row-btn row-btn-dup" onclick="dupliquerSoustache('${parentId}','${p.id}')" title="Dupliquer">⧉</button>`;
         h += `<button class="row-btn row-btn-link${p.predecesseurs?.length?' active':''}" onclick="ouvrirPredecesseurs('${p.id}')" title="Prédécesseurs">🔗</button>`;
         h += `<button class="row-btn row-btn-del" onclick="supprimerSoustache('${parentId}','${p.id}')" title="Supprimer">✕</button>`;
       }
@@ -798,6 +799,18 @@ window.supprimerSoustache = (parentId, stId) => {
   const p = projets.find(x => x.id === parentId); if (!p) return;
   p.soustaches = p.soustaches.filter(s => s.id !== stId);
   _nettoyerPredecesseurs(stId);
+  renderAll(); scheduleSave();
+};
+
+window.dupliquerSoustache = (parentId, stId) => {
+  const p = projets.find(x => x.id === parentId); if (!p) return;
+  const src = p.soustaches.find(s => s.id === stId); if (!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id  = 'st_' + Date.now() + Math.random().toString(36).slice(2);
+  copy.nom = src.nom + ' (copie)';
+  copy.predecesseurs = [];
+  const idx = p.soustaches.findIndex(s => s.id === stId);
+  p.soustaches.splice(idx + 1, 0, copy);
   renderAll(); scheduleSave();
 };
 
