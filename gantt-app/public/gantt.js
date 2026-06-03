@@ -188,14 +188,22 @@ function matchFiltres(item) {
   return true;
 }
 
+function cmpSort(a, b) {
+  if (!sortCol) return 0;
+  const va = String(a[sortCol] ?? '').toLowerCase();
+  const vb = String(b[sortCol] ?? '').toLowerCase();
+  return va < vb ? -sortDir : va > vb ? sortDir : 0;
+}
+
 function projFiltresTries() {
   let res = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
-  if (sortCol) res.sort((a, b) => {
-    const va = String(a[sortCol] ?? '').toLowerCase();
-    const vb = String(b[sortCol] ?? '').toLowerCase();
-    return va < vb ? -sortDir : va > vb ? sortDir : 0;
-  });
+  if (sortCol) res.sort(cmpSort);
   return res;
+}
+
+function soustachesTries(p) {
+  if (!p.soustaches?.length) return [];
+  return sortCol ? [...p.soustaches].sort(cmpSort) : p.soustaches;
 }
 
 const visibleCols = () => colonnes.filter(c => c.visible !== false);
@@ -342,7 +350,7 @@ function renderGantt() {
   for (const p of ordered) {
     h += buildRow(p, total, false, null, lefts);
     if (p.soustaches?.length && !collapsed[p.id])
-      for (const s of p.soustaches) if (matchFiltres(s)) h += buildRow(s, total, true, p.id, lefts);
+      for (const s of soustachesTries(p)) if (matchFiltres(s)) h += buildRow(s, total, true, p.id, lefts);
   }
   h += `</tbody></table>`;
 
@@ -562,7 +570,7 @@ function renderMobile() {
   for (const p of ordered) {
     h += _buildMobileRow(p, joursM, total, WM, idxDeb, rowH, barH, barTop, false, COL_W);
     if (p.soustaches?.length && !collapsed[p.id]) {
-      for (const s of p.soustaches) {
+      for (const s of soustachesTries(p)) {
         if (matchFiltres(s))
           h += _buildMobileRow(s, joursM, total, WM, idxDeb, 25, 13, 6, true, COL_W);
       }
@@ -1204,7 +1212,7 @@ function _buildPrintWindow(d, f, ji) {
   ph+=`</tr></thead><tbody>`;
   for(const p of ordered){
     ph+=_printRow(p,ji,total,WP,idxDeb,idxFin,false,vcols);
-    if(p.soustaches?.length&&!collapsed[p.id])for(const s of p.soustaches)ph+=_printRow(s,ji,total,WP,idxDeb,idxFin,true,vcols);
+    if(p.soustaches?.length&&!collapsed[p.id])for(const s of soustachesTries(p))ph+=_printRow(s,ji,total,WP,idxDeb,idxFin,true,vcols);
   }
   ph+=`</tbody></table></div><div style="font-size:7px;color:#94a3b8;text-align:right;padding:3px 0;border-top:0.5px solid #e2e8f0;margin-top:3px">Planning — Édité le ${new Date().toLocaleDateString('fr-FR')}</div></body></html>`;
   win.document.write(ph); win.document.close(); return win;
