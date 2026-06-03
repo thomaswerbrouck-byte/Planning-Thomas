@@ -1623,16 +1623,42 @@ function _excelRow(p, ji, vcols, idxDeb, idxFin, isSub) {
     h += `<td style="${st}">${val}</td>`;
   }
 
+  /* Trouver l'index de la cellule juste avant et juste après la barre */
+  let lastBeforeIdx = -1, firstAfterIdx = -1;
+  for (let i = 0; i < ji.length; i++) {
+    const gi = idxDate(ji[i].clef);
+    if (gi < pD) lastBeforeIdx = i;
+    if (gi > pF && firstAfterIdx === -1) firstAfterIdx = i;
+  }
+  const lblDate = p.debut.split('-').slice(1).reverse().join('/'); // DD/MM
+
   /* Cellules jours */
-  for (const j of ji) {
-    const gi    = idxDate(j.clef);
+  for (let i = 0; i < ji.length; i++) {
+    const j  = ji[i];
+    const gi = idxDate(j.clef);
     const inBar = gi >= pD && gi <= pF;
-    let bg;
-    if (inBar)              bg = isSub ? hexRgba(col, 0.65) : col;
-    else if (j.clef===todayStr) bg = '#fef9c3';
-    else if (j.wk)          bg = '#eef2ff';
-    else                    bg = 'white';
-    h += `<td style="background:${bg}"></td>`;
+
+    let bg, content = '', align = 'left', txtSt = '';
+
+    if (inBar)                   bg = isSub ? hexRgba(col, 0.65) : col;
+    else if (j.clef===todayStr)  bg = '#fef9c3';
+    else if (j.wk)               bg = '#eef2ff';
+    else                         bg = 'white';
+
+    /* Date à gauche de la barre */
+    if (i === lastBeforeIdx) {
+      content = lblDate;
+      align   = 'right';
+      txtSt   = 'font-size:6pt;color:#64748b;font-weight:600;';
+    }
+    /* Nom à droite de la barre */
+    if (i === firstAfterIdx) {
+      content = esc(p.nom);
+      align   = 'left';
+      txtSt   = `font-size:6.5pt;color:#374151;font-weight:${isSub?400:500};`;
+    }
+
+    h += `<td style="background:${bg};text-align:${align};${txtSt}overflow:visible;white-space:nowrap">${content}</td>`;
   }
 
   h += `</tr>`;
