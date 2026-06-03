@@ -214,17 +214,17 @@ body {
 #toolbar {
   background: white;
   border-bottom: 1px solid var(--gray-200);
-  padding: 6px 12px;
-  display: flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  display: flex; align-items: center; gap: 5px;
   flex-shrink: 0; flex-wrap: wrap;
 }
 
 .btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 12px; border-radius: 7px;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 9px; border-radius: 6px;
   border: 1px solid var(--gray-200);
   background: white; color: var(--gray-700);
-  font-size: .8rem; font-weight: 500;
+  font-size: .77rem; font-weight: 500;
   cursor: pointer; transition: all .12s; white-space: nowrap;
   font-family: inherit;
 }

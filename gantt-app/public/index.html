@@ -85,8 +85,6 @@
       <div class="sep admin-only"></div>
       <button class="btn no-eco" onclick="ouvrirConfigTech()">⚙ Attributions</button>
       <button class="btn" onclick="ouvrirConfigCols()">⚙ Colonnes</button>
-      <button class="btn btn-danger" onclick="ouvrirExportPDF()">📄 Export PDF</button>
-      <button class="btn" style="background:#16a34a;color:white" onclick="ouvrirExportExcel()">📊 Export Excel</button>
       <button class="btn admin-only" onclick="toggleHistory()">🕐 Historique</button>
       <div class="sep"></div>
       <div class="zoom-grp">
@@ -104,6 +102,9 @@
         <select id="anneeSelect" onchange="changerAnnee(this.value)"></select>
       </div>
       <button class="btn" id="btn-toggle-arrows" onclick="toggleArrows()" title="Afficher/masquer les liaisons">🔗 Liaisons</button>
+      <div class="sep"></div>
+      <button class="btn btn-danger" onclick="ouvrirExportPDF()">📄 PDF</button>
+      <button class="btn" style="background:#16a34a;color:white" onclick="ouvrirExportExcel()">📊 Excel</button>
     </div>
 
     <!-- Gantt -->
