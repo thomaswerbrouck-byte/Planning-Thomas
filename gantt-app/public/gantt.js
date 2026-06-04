@@ -202,10 +202,10 @@ function matchFiltres(item) {
   return true;
 }
 
-/* Pour ECO/ASEPTIC : toutes les sous-tâches des parents visibles sont affichées */
+/* Les sous-tâches sont toujours affichées si leur parent est visible.
+   Le filtre s'applique uniquement aux tâches parentes. */
 function matchFiltresSousTache(s) {
-  if (userRole === 'eco' || userRole === 'aseptic') return true;
-  return matchFiltres(s);
+  return true;
 }
 
 function cmpSort(a, b) {
