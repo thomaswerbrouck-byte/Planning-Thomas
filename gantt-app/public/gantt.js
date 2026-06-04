@@ -188,6 +188,12 @@ function matchFiltres(item) {
   return true;
 }
 
+/* Pour ECO/ASEPTIC : toutes les sous-tâches des parents visibles sont affichées */
+function matchFiltresSousTache(s) {
+  if (userRole === 'eco' || userRole === 'aseptic') return true;
+  return matchFiltres(s);
+}
+
 function cmpSort(a, b) {
   if (!sortCol) return 0;
   const va = String(a[sortCol] ?? '').toLowerCase();
@@ -350,7 +356,7 @@ function renderGantt() {
   for (const p of ordered) {
     h += buildRow(p, total, false, null, lefts);
     if (p.soustaches?.length && !collapsed[p.id])
-      for (const s of soustachesTries(p)) if (matchFiltres(s)) h += buildRow(s, total, true, p.id, lefts);
+      for (const s of soustachesTries(p)) if (matchFiltresSousTache(s)) h += buildRow(s, total, true, p.id, lefts);
   }
   h += `</tbody></table>`;
 
@@ -393,7 +399,7 @@ function buildRow(p, total, isSub, parentId, lefts) {
         <span style="cursor:grab;color:#cbd5e1;font-size:13px;flex-shrink:0;user-select:none;padding:0 1px"
           onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#cbd5e1'">⠿</span>`;
       if (!isSub) {
-        const hasSub = p.soustaches?.some(s => matchFiltres(s));
+        const hasSub = p.soustaches?.some(s => matchFiltresSousTache(s));
         h += hasSub
           ? `<button onclick="toggleCollapse('${p.id}')" style="width:14px;height:14px;padding:0;font-size:8px;flex-shrink:0;border:1px solid var(--gray-300);border-radius:3px;background:white;cursor:pointer">${collapsed[p.id]?'▶':'▼'}</button>`
           : `<span style="width:14px;flex-shrink:0"></span>`;
@@ -572,7 +578,7 @@ function renderMobile() {
     h += _buildMobileRow(p, joursM, total, WM, idxDeb, rowH, barH, barTop, false, COL_W);
     if (p.soustaches?.length && !collapsed[p.id]) {
       for (const s of soustachesTries(p)) {
-        if (matchFiltres(s))
+        if (matchFiltresSousTache(s))
           h += _buildMobileRow(s, joursM, total, WM, idxDeb, 25, 13, 6, true, COL_W);
       }
     }
@@ -1404,7 +1410,7 @@ function drawDependencyArrows() {
   for (const p of ordered) {
     allRows.push(p);
     if (p.soustaches?.length && !collapsed[p.id])
-      for (const s of soustachesTries(p)) if (matchFiltres(s)) allRows.push(s);
+      for (const s of soustachesTries(p)) if (matchFiltresSousTache(s)) allRows.push(s);
   }
 
   const hasDeps = allRows.some(t => t.predecesseurs?.length > 0);
