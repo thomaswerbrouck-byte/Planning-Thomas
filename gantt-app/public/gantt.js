@@ -387,7 +387,8 @@ function buildRow(p, total, isSub, parentId, lefts) {
   const ec = etatColor(p.etat);
 
   const vcols = visibleCols();
-  let h = `<tr data-rowid="${p.id}">`;
+  const pid   = parentId || '';
+  let h = `<tr data-rowid="${p.id}" ondragover="rowDragOver(event,'${p.id}','${pid}')" ondrop="rowDrop(event,'${p.id}','${pid}')">`;
 
   for (let ci = 0; ci < vcols.length; ci++) {
     const c = vcols[ci], ck = c.key;
@@ -396,7 +397,10 @@ function buildRow(p, total, isSub, parentId, lefts) {
 
     if (ck === 'nom') {
       h += `<div style="display:flex;align-items:center;gap:2px;height:100%">
-        <span style="cursor:grab;color:#cbd5e1;font-size:13px;flex-shrink:0;user-select:none;padding:0 1px"
+        <span draggable="true"
+          ondragstart="startRowDrag(event,'${p.id}','${pid}')"
+          ondragend="endRowDrag(event)"
+          style="cursor:grab;color:#cbd5e1;font-size:13px;flex-shrink:0;user-select:none;padding:0 1px"
           onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#cbd5e1'">⠿</span>`;
       if (!isSub) {
         const hasSub = p.soustaches?.some(s => matchFiltresSousTache(s));
@@ -773,6 +777,11 @@ window.startColResize = (e, idx) => {
 };
 window.doSort = k => {
   if (sortCol===k) sortDir*=-1; else { sortCol=k; sortDir=1; }
+  /* Trier les données directement (réordonne projets et sous-tâches) */
+  projets.sort(cmpSort);
+  for (const p of projets) {
+    if (p.soustaches?.length > 1) p.soustaches.sort(cmpSort);
+  }
   localStorage.setItem('sort_' + projectId, JSON.stringify({ col: sortCol, dir: sortDir }));
   renderAll(); saveNow();
 };
@@ -1136,6 +1145,71 @@ async function restaurerVersion(hid) {
   renderAll(); scheduleSave(); toggleHistory(false);
   toast('Version restaurée', 'ok');
 }
+
+/* ══════════════════════════════════════════════════════
+   DRAG LIGNES — réordonnancement manuel
+══════════════════════════════════════════════════════ */
+var _rowDragId = null, _rowDragParent = null;
+
+window.startRowDrag = (e, id, parentId) => {
+  _rowDragId     = id;
+  _rowDragParent = parentId || null;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', id);
+  /* Léger délai pour que le ghost image apparaisse avant le style */
+  setTimeout(() => {
+    document.querySelector(`tr[data-rowid="${id}"]`)?.classList.add('row-dragging');
+  }, 0);
+};
+
+window.endRowDrag = (e) => {
+  document.querySelectorAll('.row-dragging,.row-drag-over').forEach(el =>
+    el.classList.remove('row-dragging','row-drag-over'));
+  _rowDragId = null; _rowDragParent = null;
+};
+
+window.rowDragOver = (e, targetId, targetParent) => {
+  if (!_rowDragId || targetId === _rowDragId) return;
+  /* Autoriser seulement si même niveau (parent↔parent ou sous-tâche↔sous-tâche même parent) */
+  const sameLevel = (!_rowDragParent && !targetParent) ||
+                    (_rowDragParent && targetParent && _rowDragParent === targetParent);
+  if (!sameLevel) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.row-drag-over').forEach(el => el.classList.remove('row-drag-over'));
+  document.querySelector(`tr[data-rowid="${targetId}"]`)?.classList.add('row-drag-over');
+};
+
+window.rowDrop = (e, targetId, targetParent) => {
+  e.preventDefault();
+  if (!_rowDragId || targetId === _rowDragId) return;
+  document.querySelectorAll('.row-dragging,.row-drag-over').forEach(el =>
+    el.classList.remove('row-dragging','row-drag-over'));
+
+  if (!_rowDragParent && !targetParent) {
+    /* Réordonner les tâches parentes */
+    const fi = projets.findIndex(p => p.id === _rowDragId);
+    const ti = projets.findIndex(p => p.id === targetId);
+    if (fi >= 0 && ti >= 0) {
+      const [item] = projets.splice(fi, 1);
+      projets.splice(ti, 0, item);
+    }
+  } else if (_rowDragParent && targetParent && _rowDragParent === targetParent) {
+    /* Réordonner les sous-tâches d'un même parent */
+    const parent = projets.find(p => p.id === _rowDragParent);
+    if (parent) {
+      const fi = parent.soustaches.findIndex(s => s.id === _rowDragId);
+      const ti = parent.soustaches.findIndex(s => s.id === targetId);
+      if (fi >= 0 && ti >= 0) {
+        const [item] = parent.soustaches.splice(fi, 1);
+        parent.soustaches.splice(ti, 0, item);
+      }
+    }
+  }
+
+  _rowDragId = null; _rowDragParent = null;
+  renderAll(); scheduleSave();
+};
 
 /* ══════════════════════════════════════════════════════
    SAVE
