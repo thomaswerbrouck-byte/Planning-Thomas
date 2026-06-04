@@ -1473,7 +1473,8 @@ function drawDependencyArrows() {
   svg.classList.add('dep-arrows-svg');
   svg.setAttribute('width',  svgW);
   svg.setAttribute('height', svgH);
-  svg.style.cssText = `position:absolute;top:0;left:${fw}px;pointer-events:none;z-index:15;overflow:hidden`;
+  /* z-index:8 = sous les cellules sticky (z-index:10) pour ne jamais les chevaucher */
+  svg.style.cssText = `position:absolute;top:0;left:${fw}px;pointer-events:none;z-index:8;overflow:hidden`;
 
   const defs = document.createElementNS(NS, 'defs');
 
@@ -1495,14 +1496,27 @@ function drawDependencyArrows() {
   pSS.setAttribute('points','0 0, 7 2.5, 0 5'); pSS.setAttribute('fill','#3b82f6');
   mkSS.appendChild(pSS); defs.appendChild(mkSS);
 
-  /* ClipPath */
+  /* ClipPath — mis à jour dynamiquement au scroll pour masquer la zone des colonnes fixes */
   const clip = document.createElementNS(NS, 'clipPath');
   clip.setAttribute('id', 'gantt-area-clip');
   const clipR = document.createElementNS(NS, 'rect');
-  clipR.setAttribute('x',0); clipR.setAttribute('y',0);
-  clipR.setAttribute('width',svgW); clipR.setAttribute('height',svgH);
+  clipR.setAttribute('y',0); clipR.setAttribute('height',svgH);
   clip.appendChild(clipR); defs.appendChild(clip);
   svg.appendChild(defs);
+
+  /* Initialise et met à jour le clip selon le scroll horizontal */
+  const wrap = document.getElementById('gantt-wrap');
+  function _updateClip() {
+    const s = wrap ? wrap.scrollLeft : 0;
+    clipR.setAttribute('x', s);
+    clipR.setAttribute('width', Math.max(0, svgW - s));
+  }
+  _updateClip();
+  if (wrap) {
+    wrap.removeEventListener('scroll', wrap._arrowClipHandler || null);
+    wrap._arrowClipHandler = _updateClip;
+    wrap.addEventListener('scroll', _updateClip, { passive: true });
+  }
 
   const g = document.createElementNS(NS, 'g');
   g.setAttribute('clip-path', 'url(#gantt-area-clip)');
