@@ -785,6 +785,9 @@ function bindEvents() {
               if (fi >= 0 && ti >= 0) { const [it] = par.soustaches.splice(fi,1); par.soustaches.splice(ti,0,it); }
             }
           }
+          /* Effacer le tri actif — le drag manuel prime sur le tri colonne */
+          sortCol = null; sortDir = 1;
+          localStorage.removeItem('sort_' + projectId);
           renderAll(); scheduleSave();
         }
       }
