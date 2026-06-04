@@ -393,7 +393,7 @@ function buildRow(p, total, isSub, parentId, lefts) {
         <span style="cursor:grab;color:#cbd5e1;font-size:13px;flex-shrink:0;user-select:none;padding:0 1px"
           onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#cbd5e1'">⠿</span>`;
       if (!isSub) {
-        const hasSub = p.soustaches?.length > 0;
+        const hasSub = p.soustaches?.some(s => matchFiltres(s));
         h += hasSub
           ? `<button onclick="toggleCollapse('${p.id}')" style="width:14px;height:14px;padding:0;font-size:8px;flex-shrink:0;border:1px solid var(--gray-300);border-radius:3px;background:white;cursor:pointer">${collapsed[p.id]?'▶':'▼'}</button>`
           : `<span style="width:14px;flex-shrink:0"></span>`;
@@ -1413,34 +1413,50 @@ function drawDependencyArrows() {
   const tableEl = inner.querySelector('table');
   if (!tableEl) return;
 
-  const fw       = frozenW();
-  const svgW     = tableEl.offsetWidth - fw;
-  const svgH     = tableEl.offsetHeight;
+  const fw        = frozenW();
+  const svgW      = tableEl.offsetWidth - fw;
+  const svgH      = tableEl.offsetHeight;
   const innerRect = inner.getBoundingClientRect();
-  const arrows   = [];
+  const arrows    = [];
 
   for (const succ of allRows) {
     if (!succ.predecesseurs?.length) continue;
+
+    /* Position réelle de la barre successeur (via DOM) */
+    const succBwEl  = document.getElementById('bw_' + succ.id);
+    const succBarEl = document.getElementById('bc_' + succ.id);
+    if (!succBwEl || succBwEl.style.display === 'none' || !succBarEl) continue;
     const succRowEl = inner.querySelector(`tr[data-rowid="${succ.id}"]`);
     if (!succRowEl) continue;
-    const succRect = succRowEl.getBoundingClientRect();
-    const succY    = succRect.top - innerRect.top + succRect.height / 2;
-    const idxSuccD = idxDate(succ.debut);
-    if (idxSuccD < 0) continue;
-    const succX = idxSuccD * W;           // coordonnées relatives à fw
+
+    const succRowRect = succRowEl.getBoundingClientRect();
+    const succBarRect = succBarEl.getBoundingClientRect();
+    const succY = succRowRect.top - innerRect.top + succRowRect.height / 2;
+    const succXLeft  = succBarRect.left  - innerRect.left - fw; // bord gauche barre succ
 
     for (const predId of succ.predecesseurs) {
       const pred = getById(predId);
       if (!pred) continue;
+
+      /* Position réelle de la barre prédécesseur (via DOM) */
+      const predBwEl  = document.getElementById('bw_' + predId);
+      const predBarEl = document.getElementById('bc_' + predId);
+      if (!predBwEl || predBwEl.style.display === 'none' || !predBarEl) continue;
       const predRowEl = inner.querySelector(`tr[data-rowid="${predId}"]`);
       if (!predRowEl) continue;
-      const predRect = predRowEl.getBoundingClientRect();
-      const predY    = predRect.top - innerRect.top + predRect.height / 2;
-      const idxPredF = idxDate(pred.fin);
-      if (idxPredF < 0) continue;
-      const predX = (Math.min(jours.length - 1, idxPredF) + 1) * W;   // relatif à fw
 
-      arrows.push({ predX, predY, succX, succY });
+      const predRowRect = predRowEl.getBoundingClientRect();
+      const predBarRect = predBarEl.getBoundingClientRect();
+      const predY = predRowRect.top - innerRect.top + predRowRect.height / 2;
+
+      /* Fin→Début (par défaut) ou Début→Début (mêmes dates de début) */
+      const isS2S  = pred.debut === succ.debut;
+      const predX  = isS2S
+        ? predBarRect.left  - innerRect.left - fw   // bord gauche pred
+        : predBarRect.right - innerRect.left - fw;  // bord droit pred
+      const succX  = isS2S ? predX : succXLeft;
+
+      arrows.push({ predX, predY, succX, succY, isS2S });
     }
   }
 
@@ -1451,59 +1467,71 @@ function drawDependencyArrows() {
   svg.classList.add('dep-arrows-svg');
   svg.setAttribute('width',  svgW);
   svg.setAttribute('height', svgH);
-  /* Positionné juste après les colonnes fixes — les flèches ne chevauchent jamais le tableau */
   svg.style.cssText = `position:absolute;top:0;left:${fw}px;pointer-events:none;z-index:15;overflow:hidden`;
 
   const defs = document.createElementNS(NS, 'defs');
 
-  /* Tête de flèche */
-  const marker = document.createElementNS(NS, 'marker');
-  marker.setAttribute('id', 'dep-arrow');
-  marker.setAttribute('markerWidth', '7');
-  marker.setAttribute('markerHeight', '5');
-  marker.setAttribute('refX', '6');
-  marker.setAttribute('refY', '2.5');
-  marker.setAttribute('orient', 'auto');
-  const mpoly = document.createElementNS(NS, 'polygon');
-  mpoly.setAttribute('points', '0 0, 7 2.5, 0 5');
-  mpoly.setAttribute('fill', '#f97316');
-  marker.appendChild(mpoly);
-  defs.appendChild(marker);
+  /* Tête de flèche orange (Fin→Début) */
+  const mkFS = document.createElementNS(NS, 'marker');
+  mkFS.setAttribute('id', 'arr-fs'); mkFS.setAttribute('markerWidth','7');
+  mkFS.setAttribute('markerHeight','5'); mkFS.setAttribute('refX','6');
+  mkFS.setAttribute('refY','2.5'); mkFS.setAttribute('orient','auto');
+  const pFS = document.createElementNS(NS, 'polygon');
+  pFS.setAttribute('points','0 0, 7 2.5, 0 5'); pFS.setAttribute('fill','#f97316');
+  mkFS.appendChild(pFS); defs.appendChild(mkFS);
 
-  /* ClipPath : limite les flèches à la zone gantt visible */
+  /* Tête de flèche bleue (Début→Début) */
+  const mkSS = document.createElementNS(NS, 'marker');
+  mkSS.setAttribute('id', 'arr-ss'); mkSS.setAttribute('markerWidth','7');
+  mkSS.setAttribute('markerHeight','5'); mkSS.setAttribute('refX','6');
+  mkSS.setAttribute('refY','2.5'); mkSS.setAttribute('orient','auto');
+  const pSS = document.createElementNS(NS, 'polygon');
+  pSS.setAttribute('points','0 0, 7 2.5, 0 5'); pSS.setAttribute('fill','#3b82f6');
+  mkSS.appendChild(pSS); defs.appendChild(mkSS);
+
+  /* ClipPath */
   const clip = document.createElementNS(NS, 'clipPath');
   clip.setAttribute('id', 'gantt-area-clip');
   const clipR = document.createElementNS(NS, 'rect');
-  clipR.setAttribute('x', 0); clipR.setAttribute('y', 0);
-  clipR.setAttribute('width', svgW); clipR.setAttribute('height', svgH);
-  clip.appendChild(clipR);
-  defs.appendChild(clip);
+  clipR.setAttribute('x',0); clipR.setAttribute('y',0);
+  clipR.setAttribute('width',svgW); clipR.setAttribute('height',svgH);
+  clip.appendChild(clipR); defs.appendChild(clip);
   svg.appendChild(defs);
 
-  /* Groupe clippé contenant toutes les flèches */
   const g = document.createElementNS(NS, 'g');
   g.setAttribute('clip-path', 'url(#gantt-area-clip)');
 
-  for (const { predX, predY, succX, succY } of arrows) {
-    const dx  = succX - predX;
-    const cx1 = predX + Math.max(20, Math.abs(dx) * 0.45);
-    const cx2 = succX - Math.max(20, Math.abs(dx) * 0.45);
-    const d   = `M${predX},${predY} C${cx1},${predY} ${cx2},${succY} ${succX},${succY}`;
+  for (const { predX, predY, succX, succY, isS2S } of arrows) {
+    const color  = isS2S ? '#3b82f6' : '#f97316';
+    const marker = isS2S ? 'url(#arr-ss)' : 'url(#arr-fs)';
+
+    let d;
+    if (isS2S) {
+      /* Début→Début : agraphe à gauche des barres */
+      const lx = predX - 10;
+      d = `M${predX},${predY} L${lx},${predY} L${lx},${succY} L${succX},${succY}`;
+    } else {
+      /* Fin→Début : courbe de Bézier */
+      const dx  = succX - predX;
+      const cx1 = predX + Math.max(20, Math.abs(dx) * 0.45);
+      const cx2 = succX - Math.max(20, Math.abs(dx) * 0.45);
+      d = `M${predX},${predY} C${cx1},${predY} ${cx2},${succY} ${succX},${succY}`;
+    }
 
     const shadow = document.createElementNS(NS, 'path');
     shadow.setAttribute('d', d);
-    shadow.setAttribute('stroke', 'rgba(0,0,0,0.12)');
+    shadow.setAttribute('stroke', 'rgba(0,0,0,0.10)');
     shadow.setAttribute('stroke-width', '3.5');
     shadow.setAttribute('fill', 'none');
     g.appendChild(shadow);
 
     const path = document.createElementNS(NS, 'path');
     path.setAttribute('d', d);
-    path.setAttribute('stroke', '#f97316');
+    path.setAttribute('stroke', color);
     path.setAttribute('stroke-width', '1.8');
     path.setAttribute('fill', 'none');
-    path.setAttribute('stroke-dasharray', '5,3');
-    path.setAttribute('marker-end', 'url(#dep-arrow)');
+    if (!isS2S) path.setAttribute('stroke-dasharray', '5,3');
+    path.setAttribute('marker-end', marker);
     g.appendChild(path);
   }
 
