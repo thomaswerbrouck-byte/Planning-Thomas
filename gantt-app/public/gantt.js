@@ -1059,25 +1059,34 @@ window.updateTechCoul = (i, hex) => { techniciens[i].couleur=hex; document.query
 window.ouvrirConfigCols = () => {
   let h = `<h3>Colonnes — visibilité &amp; largeur</h3>`;
   colonnes.forEach((c, i) => {
-    const vis = c.visible !== false;
-    const isNom = c.key === 'nom'; // colonne nom toujours visible
+    const vis     = c.visible !== false;
+    const isNom   = c.key === 'nom';
+    const isLocked = isNom || ((userRole === 'eco' || userRole === 'aseptic') && c.key === 'tech');
+    const lockTitle = isNom ? 'Colonne obligatoire' : isLocked ? 'Non disponible pour ce profil' : '';
     h += `<div class="cfg-row" style="opacity:${vis?1:.45}">
-      <label style="display:flex;align-items:center;gap:6px;cursor:${isNom?'default':'pointer'};flex-shrink:0" title="${isNom?'Colonne obligatoire':''}">
-        <input type="checkbox" ${vis?'checked':''} ${isNom?'disabled':''} onchange="toggleColVisible(${i},this.checked)" style="cursor:${isNom?'default':'pointer'}">
+      <label style="display:flex;align-items:center;gap:6px;cursor:${isLocked?'default':'pointer'};flex-shrink:0" title="${lockTitle}">
+        <input type="checkbox" ${vis?'checked':''} ${isLocked?'disabled':''} onchange="toggleColVisible(${i},this.checked)" style="cursor:${isLocked?'default':'pointer'}">
       </label>
-      <input type="text" value="${esc(c.label)}" style="flex:1;${!vis?'color:var(--gray-400)':''}" onchange="updateColLabel(${i},this.value)" ${!vis?'disabled':''}>
+      <input type="text" value="${esc(c.label)}" style="flex:1;${!vis?'color:var(--gray-400)':''}" onchange="updateColLabel(${i},this.value)" ${isLocked||!vis?'disabled':''}>
       <input type="number" value="${c.width}" min="40" max="400" style="width:64px;margin-left:6px" onchange="updateColWidth(${i},this.value)" ${!vis?'disabled':''}>
       <span style="font-size:.75rem;color:var(--gray-500)">px</span>
+      ${isLocked && c.key==='tech' ? `<span style="font-size:.7rem;color:#f97316;margin-left:4px">🔒</span>` : ''}
     </div>`;
   });
   h += `<div class="m-actions"><button class="btn" onclick="fermerModal()">Fermer</button></div>`;
   ouvrirModal(h);
 };
 window.toggleColVisible = (i, val) => {
+  /* ECO et ASEPTIC ne peuvent pas afficher la colonne Attribution */
+  if ((userRole === 'eco' || userRole === 'aseptic') && colonnes[i].key === 'tech' && val) {
+    toast('La colonne Attribution n\'est pas disponible pour ce profil', 'err');
+    ouvrirConfigCols(); // re-render la modale pour décocher la case
+    return;
+  }
   colonnes[i].visible = val;
   renderAll();
   saveNow();
-  ouvrirConfigCols(); // rafraîchir la modale
+  ouvrirConfigCols();
 };
 window.updateColLabel = (i, val) => { colonnes[i].label = val; saveNow(); };
 window.updateColWidth = (i, val) => { colonnes[i].width = Math.max(40, +val||40); renderAll(); saveNow(); };
