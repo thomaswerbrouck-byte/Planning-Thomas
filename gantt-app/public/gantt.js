@@ -326,7 +326,7 @@ function renderGantt() {
       style="position:sticky;top:0;left:${lefts[ci]}px;z-index:40;width:${c.width}px"
       onclick="doSort('${c.key}')">
       ${esc(c.label)}<span style="font-size:7px;margin-left:2px;opacity:${sortCol===c.key?1:.25}">${arrow}</span>
-      <div style="position:absolute;right:-3px;top:0;bottom:0;width:8px;cursor:col-resize;z-index:50" onmousedown="startColResize(event,${globalCi})"></div>
+      <div class="col-resizer" style="position:absolute;right:0;top:0;bottom:0;width:6px;cursor:col-resize;z-index:50" onmousedown="startColResize(event,${globalCi})"></div>
     </td>`;
   }
   for (const mg of mG)
@@ -804,7 +804,7 @@ function bindEvents() {
   let isPanning = false, panX = 0, panY = 0, panSL = 0, panST = 0;
 
   wrap.addEventListener('mousedown', e => {
-    if (e.target.closest('[data-pid],[data-fbtn],input,select,button,.proj-actions,.row-actions,[data-rowdrag]')) return;
+    if (e.target.closest('[data-pid],[data-fbtn],input,select,button,.proj-actions,.row-actions,[data-rowdrag],.col-resizer')) return;
     if (dragPid || colResizing !== null || rowDragActive) return;
     isPanning = true;
     panX  = e.clientX; panY  = e.clientY;
