@@ -37,6 +37,20 @@ window.applyRole = function(p) {
   if (userRole === 'eco' || userRole === 'aseptic') document.body.classList.add('role-eco');
 };
 
+/* ── Undo ── */
+var _undoStack = [];
+const _UNDO_MAX = 30;
+function pushUndo() {
+  _undoStack.push(JSON.stringify(projets));
+  if (_undoStack.length > _UNDO_MAX) _undoStack.shift();
+}
+window.undo = () => {
+  if (!_undoStack.length) { toast('Rien à annuler', ''); return; }
+  projets = JSON.parse(_undoStack.pop()).map(normalizeTask);
+  renderAll(); scheduleSave();
+  toast('↩ Action annulée', 'ok');
+};
+
 /* ── État global ── */
 var W = 14, WMIN = 6, WMAX = 36;
 var ROW_H = 42, ROW_HMIN = 24, ROW_HMAX = 80;
@@ -388,7 +402,7 @@ function buildRow(p, total, isSub, parentId, lefts) {
 
   const vcols = visibleCols();
   const pid   = parentId || '';
-  let h = `<tr data-rowid="${p.id}" ondragover="rowDragOver(event,'${p.id}','${pid}')" ondrop="rowDrop(event,'${p.id}','${pid}')">`;
+  let h = `<tr data-rowid="${p.id}">`;
 
   for (let ci = 0; ci < vcols.length; ci++) {
     const c = vcols[ci], ck = c.key;
@@ -397,10 +411,9 @@ function buildRow(p, total, isSub, parentId, lefts) {
 
     if (ck === 'nom') {
       h += `<div style="display:flex;align-items:center;gap:2px;height:100%">
-        <span draggable="true"
-          ondragstart="startRowDrag(event,'${p.id}','${pid}')"
-          ondragend="endRowDrag(event)"
-          style="cursor:grab;color:#cbd5e1;font-size:13px;flex-shrink:0;user-select:none;padding:0 1px"
+        <span data-rowdrag="1"
+          onmousedown="startRowDragMouse(event,'${p.id}','${pid}')"
+          style="cursor:${userRole==='admin'?'grab':'default'};color:#cbd5e1;font-size:13px;flex-shrink:0;user-select:none;padding:0 1px"
           onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#cbd5e1'">⠿</span>`;
       if (!isSub) {
         const hasSub = p.soustaches?.some(s => matchFiltresSousTache(s));
@@ -703,6 +716,7 @@ function attachDrag() {
 }
 
 function bindEvents() {
+  /* ── Drag barres ── */
   document.addEventListener('mousemove', e => {
     if (dragPid) {
       const dC = Math.round((e.clientX - dragX0) / W);
@@ -716,6 +730,18 @@ function bindEvents() {
       colonnes[colResizing].width = Math.max(40, colResW0 + (e.clientX - colResX0));
       renderAll();
     }
+    /* ── Drag lignes ── */
+    if (rowDragActive) {
+      e.preventDefault();
+      document.querySelectorAll('.row-drag-over').forEach(el => el.classList.remove('row-drag-over'));
+      const tr = document.elementFromPoint(e.clientX, e.clientY)?.closest('tr[data-rowid]');
+      if (tr && tr.dataset.rowid !== rowDragId) {
+        const tParent = _getParentId(tr.dataset.rowid);
+        const sameLevel = (!rowDragParentId && !tParent) ||
+                          (rowDragParentId && tParent && rowDragParentId === tParent);
+        if (sameLevel) tr.classList.add('row-drag-over');
+      }
+    }
   });
 
   document.addEventListener('mouseup', e => {
@@ -724,29 +750,59 @@ function bindEvents() {
       if (p) {
         const dC = Math.round((e.clientX - dragX0) / W);
         if (dragMode === 'move') {
-          const dur  = dragIdxF0 - dragIdxD0;
-          const newD = Math.max(0, Math.min(jours.length-1-dur, dragIdxD0+dC));
-          const delta = newD - dragIdxD0;          // nb de jours décalés
+          const dur   = dragIdxF0 - dragIdxD0;
+          const newD  = Math.max(0, Math.min(jours.length-1-dur, dragIdxD0+dC));
+          const delta = newD - dragIdxD0;
           p.debut = dateFromIdx(newD); p.fin = dateFromIdx(newD+dur);
-          if (delta !== 0) deplacerSuccesseurs(dragPid, delta); // cascade même delta
+          if (delta !== 0) deplacerSuccesseurs(dragPid, delta);
         } else {
           p.fin = dateFromIdx(Math.max(dragIdxD0, Math.min(jours.length-1, dragIdxF0+dC)));
-          propagerDates(dragPid); // resize : pousser si chevauchement
+          propagerDates(dragPid);
         }
       }
       dragPid = null; dragMode = null; renderAll(); scheduleSave();
     }
     if (colResizing !== null) { colResizing = null; saveNow(); }
+    /* ── Fin drag lignes ── */
+    if (rowDragActive) {
+      const tr = document.elementFromPoint(e.clientX, e.clientY)?.closest('tr[data-rowid]');
+      if (tr && tr.dataset.rowid !== rowDragId) {
+        const targetId     = tr.dataset.rowid;
+        const targetParent = _getParentId(targetId);
+        const sameLevel    = (!rowDragParentId && !targetParent) ||
+                             (rowDragParentId && targetParent && rowDragParentId === targetParent);
+        if (sameLevel) {
+          pushUndo();
+          if (!rowDragParentId) {
+            const fi = projets.findIndex(p => p.id === rowDragId);
+            const ti = projets.findIndex(p => p.id === targetId);
+            if (fi >= 0 && ti >= 0) { const [it] = projets.splice(fi,1); projets.splice(ti,0,it); }
+          } else {
+            const par = projets.find(p => p.id === rowDragParentId);
+            if (par) {
+              const fi = par.soustaches.findIndex(s => s.id === rowDragId);
+              const ti = par.soustaches.findIndex(s => s.id === targetId);
+              if (fi >= 0 && ti >= 0) { const [it] = par.soustaches.splice(fi,1); par.soustaches.splice(ti,0,it); }
+            }
+          }
+          renderAll(); scheduleSave();
+        }
+      }
+      rowDragActive = false;
+      rowDragId = null; rowDragParentId = null;
+      document.body.style.cursor = '';
+      document.querySelectorAll('.row-drag-over,.row-dragging').forEach(el =>
+        el.classList.remove('row-drag-over','row-dragging'));
+    }
   });
 
-  /* ── Pan (cliquer-glisser sur le gantt) ── */
+  /* ── Pan ── */
   const wrap = document.getElementById('gantt-wrap');
   let isPanning = false, panX = 0, panY = 0, panSL = 0, panST = 0;
 
   wrap.addEventListener('mousedown', e => {
-    /* Ignorer les clics sur barres, inputs, selects, boutons */
-    if (e.target.closest('[data-pid],[data-fbtn],input,select,button,.proj-actions,.row-actions')) return;
-    if (dragPid || colResizing !== null) return;
+    if (e.target.closest('[data-pid],[data-fbtn],input,select,button,.proj-actions,.row-actions,[data-rowdrag]')) return;
+    if (dragPid || colResizing !== null || rowDragActive) return;
     isPanning = true;
     panX  = e.clientX; panY  = e.clientY;
     panSL = wrap.scrollLeft; panST = wrap.scrollTop;
@@ -791,6 +847,7 @@ window.toggleCollapse = pid => { collapsed[pid] = !collapsed[pid]; renderAll(); 
    CRUD
 ══════════════════════════════════════════════════════ */
 window.ajouterProjet = () => {
+  pushUndo();
   const today = new Date().toISOString().slice(0,10);
   projets.push({
     id: 'id_'+Date.now(), nom: 'Nouvelle opération',
@@ -801,6 +858,7 @@ window.ajouterProjet = () => {
 };
 
 window.ajouterSoustache = parentId => {
+  pushUndo();
   const p = projets.find(x => x.id === parentId); if (!p) return;
   if (!p.soustaches) p.soustaches = [];
   p.soustaches.push({
@@ -813,6 +871,7 @@ window.ajouterSoustache = parentId => {
 };
 
 window.supprimerSoustache = (parentId, stId) => {
+  pushUndo();
   const p = projets.find(x => x.id === parentId); if (!p) return;
   p.soustaches = p.soustaches.filter(s => s.id !== stId);
   _nettoyerPredecesseurs(stId);
@@ -820,6 +879,7 @@ window.supprimerSoustache = (parentId, stId) => {
 };
 
 window.dupliquerSoustache = (parentId, stId) => {
+  pushUndo();
   const p = projets.find(x => x.id === parentId); if (!p) return;
   const src = p.soustaches.find(s => s.id === stId); if (!src) return;
   const copy = JSON.parse(JSON.stringify(src));
@@ -844,6 +904,7 @@ window.supprimer = id => {
 };
 
 window.confirmerSupprimer = id => {
+  pushUndo();
   projets = projets.filter(p => p.id !== id);
   _nettoyerPredecesseurs(id);
   fermerModal(); renderAll(); scheduleSave();
@@ -935,6 +996,7 @@ function peutAtteindre(fromId, targetId, visited = new Set()) {
 }
 
 window.dupliquer = id => {
+  pushUndo();
   const src = getById(id); if (!src) return;
   const copy = JSON.parse(JSON.stringify(src));
   copy.id = 'id_'+Date.now(); copy.nom = src.nom+' (copie)';
@@ -1111,7 +1173,12 @@ window.updateColWidth = (i, val) => { colonnes[i].width = Math.max(40, +val||40)
 ══════════════════════════════════════════════════════ */
 function ouvrirModal(h) { document.getElementById('modal-body').innerHTML = h; document.getElementById('modal').classList.add('show'); }
 window.fermerModal = () => { document.getElementById('modal').classList.remove('show'); };
-document.addEventListener('keydown', e => { if (e.key==='Escape') { fermerModal(); fermerFiltrePanel(); } });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { fermerModal(); fermerFiltrePanel(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    if (userRole === 'admin') { e.preventDefault(); undo(); }
+  }
+});
 
 /* ══════════════════════════════════════════════════════
    HISTORIQUE
@@ -1147,68 +1214,24 @@ async function restaurerVersion(hid) {
 }
 
 /* ══════════════════════════════════════════════════════
-   DRAG LIGNES — réordonnancement manuel
+   DRAG LIGNES — réordonnancement souris
 ══════════════════════════════════════════════════════ */
-var _rowDragId = null, _rowDragParent = null;
+var rowDragActive = false, rowDragId = null, rowDragParentId = null;
 
-window.startRowDrag = (e, id, parentId) => {
-  _rowDragId     = id;
-  _rowDragParent = parentId || null;
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', id);
-  /* Léger délai pour que le ghost image apparaisse avant le style */
-  setTimeout(() => {
-    document.querySelector(`tr[data-rowid="${id}"]`)?.classList.add('row-dragging');
-  }, 0);
-};
+function _getParentId(taskId) {
+  for (const p of projets)
+    if (p.soustaches?.some(s => s.id === taskId)) return p.id;
+  return null;
+}
 
-window.endRowDrag = (e) => {
-  document.querySelectorAll('.row-dragging,.row-drag-over').forEach(el =>
-    el.classList.remove('row-dragging','row-drag-over'));
-  _rowDragId = null; _rowDragParent = null;
-};
-
-window.rowDragOver = (e, targetId, targetParent) => {
-  if (!_rowDragId || targetId === _rowDragId) return;
-  /* Autoriser seulement si même niveau (parent↔parent ou sous-tâche↔sous-tâche même parent) */
-  const sameLevel = (!_rowDragParent && !targetParent) ||
-                    (_rowDragParent && targetParent && _rowDragParent === targetParent);
-  if (!sameLevel) return;
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  document.querySelectorAll('.row-drag-over').forEach(el => el.classList.remove('row-drag-over'));
-  document.querySelector(`tr[data-rowid="${targetId}"]`)?.classList.add('row-drag-over');
-};
-
-window.rowDrop = (e, targetId, targetParent) => {
-  e.preventDefault();
-  if (!_rowDragId || targetId === _rowDragId) return;
-  document.querySelectorAll('.row-dragging,.row-drag-over').forEach(el =>
-    el.classList.remove('row-dragging','row-drag-over'));
-
-  if (!_rowDragParent && !targetParent) {
-    /* Réordonner les tâches parentes */
-    const fi = projets.findIndex(p => p.id === _rowDragId);
-    const ti = projets.findIndex(p => p.id === targetId);
-    if (fi >= 0 && ti >= 0) {
-      const [item] = projets.splice(fi, 1);
-      projets.splice(ti, 0, item);
-    }
-  } else if (_rowDragParent && targetParent && _rowDragParent === targetParent) {
-    /* Réordonner les sous-tâches d'un même parent */
-    const parent = projets.find(p => p.id === _rowDragParent);
-    if (parent) {
-      const fi = parent.soustaches.findIndex(s => s.id === _rowDragId);
-      const ti = parent.soustaches.findIndex(s => s.id === targetId);
-      if (fi >= 0 && ti >= 0) {
-        const [item] = parent.soustaches.splice(fi, 1);
-        parent.soustaches.splice(ti, 0, item);
-      }
-    }
-  }
-
-  _rowDragId = null; _rowDragParent = null;
-  renderAll(); scheduleSave();
+window.startRowDragMouse = (e, id, parentId) => {
+  if (userRole !== 'admin') return;
+  e.stopPropagation(); e.preventDefault();
+  rowDragActive   = true;
+  rowDragId       = id;
+  rowDragParentId = parentId || null;
+  document.body.style.cursor = 'grabbing';
+  document.querySelector(`tr[data-rowid="${id}"]`)?.classList.add('row-dragging');
 };
 
 /* ══════════════════════════════════════════════════════
