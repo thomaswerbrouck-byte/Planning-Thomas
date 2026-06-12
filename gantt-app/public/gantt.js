@@ -465,7 +465,7 @@ function buildRow(p, total, isSub, parentId, lefts, orphanParentName = null) {
           : `<span style="width:14px;flex-shrink:0"></span>`;
         h += `<input type="text" value="${esc(p.nom)}" style="flex:1;min-width:0" onchange="upd('${p.id}','nom',this.value)">`;
         h += `<div class="row-actions">
-          <button class="row-btn row-btn-notes${p.notes?' has-note':''}" onclick="ouvrirNotes('${p.id}')" title="${p.notes?'Voir la note':'Ajouter une note'}">💬</button>
+          ${p.notes?`<button class="row-btn row-btn-notes has-note" onclick="ouvrirNotes('${p.id}')" title="Voir la note">💬</button>`:''}
           <button class="row-btn row-btn-menu${p.predecesseurs?.length?' has-pred':''}" onclick="toggleRowMenu(event,'${p.id}',false,'')" title="Actions">⋮</button>
         </div>`;
       } else {
@@ -477,7 +477,7 @@ function buildRow(p, total, isSub, parentId, lefts, orphanParentName = null) {
         }
         h += `<input type="text" value="${esc(p.nom)}" style="flex:1;min-width:0" onchange="upd('${p.id}','nom',this.value)">`;
         h += `<div class="row-actions">
-          <button class="row-btn row-btn-notes${p.notes?' has-note':''}" onclick="ouvrirNotes('${p.id}')" title="${p.notes?'Voir la note':'Ajouter une note'}">💬</button>
+          ${p.notes?`<button class="row-btn row-btn-notes has-note" onclick="ouvrirNotes('${p.id}')" title="Voir la note">💬</button>`:''}
           <button class="row-btn row-btn-menu${p.predecesseurs?.length?' has-pred':''}" onclick="toggleRowMenu(event,'${p.id}',true,'${parentId}')" title="Actions">⋮</button>
         </div>`;
       }
