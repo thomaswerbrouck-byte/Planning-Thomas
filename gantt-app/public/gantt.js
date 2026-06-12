@@ -194,6 +194,21 @@ function valeursUniques(key) {
   return [...v].sort();
 }
 
+/* Pour ECO/ASEPTIC : uniquement les valeurs issues de leurs tâches attribuées.
+   Pour les autres rôles : identique à valeursUniques. */
+function valeursFiltrables(key) {
+  if (userRole !== 'eco' && userRole !== 'aseptic') return valeursUniques(key);
+  const techFilter = filtres['tech'] || [];
+  const v = new Set();
+  for (const p of projets) {
+    if (techFilter.includes(p.tech ?? '')) v.add(String(p[key] ?? ''));
+    p.soustaches?.forEach(s => {
+      if (techFilter.includes(s.tech ?? '')) v.add(String(s[key] ?? ''));
+    });
+  }
+  return [...v].sort();
+}
+
 function matchFiltres(item) {
   for (const k in filtres) {
     if (!filtres[k]) continue;
@@ -1102,7 +1117,7 @@ let filtreActif = null;
 window.ouvrirFiltre = (key, btn) => {
   if (filtreActif === key) { fermerFiltrePanel(); return; }
   fermerFiltrePanel();
-  const vals = valeursUniques(key);
+  const vals = valeursFiltrables(key);
   const sel  = filtres[key] ? new Set(filtres[key]) : new Set(vals);
   const rect = btn.getBoundingClientRect();
   const allChecked = !filtres[key] || sel.size === vals.length;
@@ -1199,7 +1214,7 @@ window._applyEcoFilter = window._applyRoleFilter;
 
 window.appliquerFiltre = key => {
   const panel = document.getElementById('filtre-panel'); if (!panel) return;
-  const vals      = valeursUniques(key);
+  const vals      = valeursFiltrables(key);
   const hasSearch = (panel.querySelector('#f-search')?.value.trim().length ?? 0) > 0;
 
   /* Avec recherche active : seuls les items visibles et cochés comptent.
