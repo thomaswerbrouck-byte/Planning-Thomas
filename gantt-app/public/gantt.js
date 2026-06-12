@@ -221,6 +221,34 @@ function projFiltresTries() {
   return res;
 }
 
+/* Retourne une liste plate de lignes à afficher dans le Gantt.
+   type 'parent' : tâche principale visible
+   type 'sub'    : sous-tâche dont le parent est visible
+   type 'orphan' : sous-tâche dont le parent ne correspond pas au filtre */
+function rowsForRender() {
+  const hasFilter = Object.values(filtres).some(v => v && v.length > 0);
+  const rows = [];
+  const sorted = sortCol ? [...projets].sort(cmpSort) : projets;
+
+  for (const p of sorted) {
+    const parentMatch = matchFiltres(p);
+    if (!hasFilter || parentMatch) {
+      rows.push({ type: 'parent', task: p });
+      if (p.soustaches?.length && !collapsed[p.id]) {
+        const subs = sortCol ? [...p.soustaches].sort(cmpSort) : p.soustaches;
+        for (const s of subs) rows.push({ type: 'sub', task: s, parentId: p.id });
+      }
+    } else {
+      /* Parent hors filtre : afficher uniquement les sous-tâches qui matchent */
+      const subs = sortCol ? [...(p.soustaches||[])].sort(cmpSort) : (p.soustaches||[]);
+      for (const s of subs) {
+        if (matchFiltres(s)) rows.push({ type: 'orphan', task: s, parentId: p.id, parentName: p.nom });
+      }
+    }
+  }
+  return rows;
+}
+
 function soustachesTries(p) {
   if (!p.soustaches?.length) return [];
   return sortCol ? [...p.soustaches].sort(cmpSort) : p.soustaches;
@@ -296,7 +324,6 @@ function renderAll() {
 function renderGantt() {
   const total   = jours.length;
   const DWLET   = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
-  const ordered = projFiltresTries();
   const lefts   = calcLefts();
 
   /* Groupes mois */
@@ -367,10 +394,10 @@ function renderGantt() {
   </td></tr>`;
 
   h += `</thead><tbody>`;
-  for (const p of ordered) {
-    h += buildRow(p, total, false, null, lefts);
-    if (p.soustaches?.length && !collapsed[p.id])
-      for (const s of soustachesTries(p)) if (matchFiltresSousTache(s)) h += buildRow(s, total, true, p.id, lefts);
+  for (const row of rowsForRender()) {
+    if (row.type === 'parent')      h += buildRow(row.task, total, false, null,        lefts);
+    else if (row.type === 'sub')    h += buildRow(row.task, total, true,  row.parentId, lefts);
+    else /* orphan */               h += buildRow(row.task, total, true,  row.parentId, lefts, row.parentName);
   }
   h += `</tbody></table>`;
 
@@ -382,7 +409,7 @@ function renderGantt() {
 }
 
 /* ─ Build one row ────────────────────────────────────── */
-function buildRow(p, total, isSub, parentId, lefts) {
+function buildRow(p, total, isSub, parentId, lefts, orphanParentName = null) {
   const idxD = idxDate(p.debut), idxF = idxDate(p.fin);
   const yearStart = ANNEE+'-01-01', yearEnd = ANNEE+'-12-31';
   const showBar = !(p.fin < yearStart || p.debut > yearEnd);
@@ -422,17 +449,17 @@ function buildRow(p, total, isSub, parentId, lefts) {
           : `<span style="width:14px;flex-shrink:0"></span>`;
         h += `<input type="text" value="${esc(p.nom)}" style="flex:1;min-width:0" onchange="upd('${p.id}','nom',this.value)">`;
         h += `<div class="row-actions">
-          <button class="row-btn row-btn-add" onclick="ajouterSoustache('${p.id}')" title="Sous-tâche">+</button>
-          <button class="row-btn row-btn-dup" onclick="dupliquer('${p.id}')" title="Dupliquer">⧉</button>
-          <button class="row-btn row-btn-link${p.predecesseurs?.length?' active':''}" onclick="ouvrirPredecesseurs('${p.id}')" title="Prédécesseurs">🔗</button>
-          <button class="row-btn row-btn-del" onclick="supprimer('${p.id}')" title="Supprimer">✕</button>
+          <button class="row-btn row-btn-menu${p.predecesseurs?.length?' has-pred':''}" onclick="toggleRowMenu(event,'${p.id}',false,'')" title="Actions">⋮</button>
         </div>`;
       } else {
-        h += `<span style="color:#38bdf8;font-size:11px;flex-shrink:0;margin-right:1px">↳</span>`;
+        if (orphanParentName) {
+          const pLabel = orphanParentName.length > 14 ? orphanParentName.slice(0, 14) + '…' : orphanParentName;
+          h += `<span class="orphan-badge" title="Tâche parente : ${esc(orphanParentName)}">↳ ${esc(pLabel)}</span>`;
+        } else {
+          h += `<span style="color:#38bdf8;font-size:11px;flex-shrink:0;margin-right:1px">↳</span>`;
+        }
         h += `<input type="text" value="${esc(p.nom)}" style="flex:1;min-width:0" onchange="upd('${p.id}','nom',this.value)">`;
-        h += `<button class="row-btn row-btn-dup" onclick="dupliquerSoustache('${parentId}','${p.id}')" title="Dupliquer">⧉</button>`;
-        h += `<button class="row-btn row-btn-link${p.predecesseurs?.length?' active':''}" onclick="ouvrirPredecesseurs('${p.id}')" title="Prédécesseurs">🔗</button>`;
-        h += `<button class="row-btn row-btn-del" onclick="supprimerSoustache('${parentId}','${p.id}')" title="Supprimer">✕</button>`;
+        h += `<div class="row-actions"><button class="row-btn row-btn-menu${p.predecesseurs?.length?' has-pred':''}" onclick="toggleRowMenu(event,'${p.id}',true,'${parentId}')" title="Actions">⋮</button></div>`;
       }
       h += `</div>`;
     }
@@ -1009,6 +1036,50 @@ window.dupliquer = id => {
   renderAll(); scheduleSave();
 };
 
+/* ── Menu contextuel ligne (bouton ⋮) ── */
+window.toggleRowMenu = (e, id, isSub, parentId) => {
+  e.stopPropagation();
+  const existing = document.querySelector('.row-menu-drop');
+  if (existing) { existing.remove(); return; }
+
+  const task    = getById(id);
+  const hasPred = task?.predecesseurs?.length > 0;
+  const menu    = document.createElement('div');
+  menu.className = 'row-menu-drop';
+
+  const items = [];
+  if (!isSub) {
+    items.push(`<button class="rmenu-item" onclick="ajouterSoustache('${id}');document.querySelector('.row-menu-drop')?.remove()">
+      <span class="rmenu-ico">＋</span>Ajouter une sous-tâche</button>`);
+  }
+  items.push(`<button class="rmenu-item" onclick="${isSub ? `dupliquerSoustache('${parentId}','${id}')` : `dupliquer('${id}')`};document.querySelector('.row-menu-drop')?.remove()">
+    <span class="rmenu-ico">⧉</span>Dupliquer</button>`);
+  items.push(`<button class="rmenu-item rlink${hasPred ? ' active' : ''}" onclick="ouvrirPredecesseurs('${id}');document.querySelector('.row-menu-drop')?.remove()">
+    <span class="rmenu-ico">🔗</span>Prédécesseurs${hasPred ? ' <span style="color:#f97316;font-size:9px">●</span>' : ''}</button>`);
+  items.push(`<div class="rmenu-sep"></div>`);
+  items.push(`<button class="rmenu-item rdel" onclick="${isSub ? `supprimerSoustache('${parentId}','${id}')` : `supprimer('${id}')`};document.querySelector('.row-menu-drop')?.remove()">
+    <span class="rmenu-ico">✕</span>Supprimer</button>`);
+
+  menu.innerHTML = items.join('');
+  document.body.appendChild(menu);
+
+  /* Positionnement : à droite du bouton, retombe vers le haut si trop bas */
+  const rect = e.currentTarget.getBoundingClientRect();
+  const mW   = 185, mH = isSub ? 125 : 160;
+  let left   = rect.right - mW;
+  let top    = rect.bottom + 3;
+  if (left < 4)                          left = rect.left;
+  if (top + mH > window.innerHeight - 8) top  = rect.top - mH;
+  menu.style.left = left + 'px';
+  menu.style.top  = top  + 'px';
+
+  setTimeout(() => {
+    document.addEventListener('mousedown', function _cm(ev) {
+      if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('mousedown', _cm); }
+    });
+  }, 10);
+};
+
 window.upd = (id, champ, val) => {
   const p = getById(id); if (!p) return;
   p[champ] = val;
@@ -1505,13 +1576,7 @@ function drawDependencyArrows() {
   inner.querySelector('.dep-arrows-svg')?.remove();
   if (!showArrows) return;
 
-  const ordered = projFiltresTries();
-  const allRows = [];
-  for (const p of ordered) {
-    allRows.push(p);
-    if (p.soustaches?.length && !collapsed[p.id])
-      for (const s of soustachesTries(p)) if (matchFiltresSousTache(s)) allRows.push(s);
-  }
+  const allRows = rowsForRender().map(r => r.task);
 
   const hasDeps = allRows.some(t => t.predecesseurs?.length > 0);
   if (!hasDeps) return;
