@@ -107,7 +107,7 @@ var ganttApp = {
     pseudo    = userPseudo;
     projectId = pid || 'default';
     filtres   = {};
-    sortCol   = null;
+    sortCol   = 'debut'; // tri par défaut : date de début
     sortDir   = 1;
     collapsed = {};
 
@@ -160,6 +160,7 @@ function normalizeTask(t) {
   if (!t.debut) t.debut = new Date().toISOString().slice(0, 10);
   if (!t.fin)   t.fin   = t.debut;
   if (!t.predecesseurs) t.predecesseurs = [];
+  if (t.notes === undefined) t.notes = '';
   return t;
 }
 
@@ -464,6 +465,7 @@ function buildRow(p, total, isSub, parentId, lefts, orphanParentName = null) {
           : `<span style="width:14px;flex-shrink:0"></span>`;
         h += `<input type="text" value="${esc(p.nom)}" style="flex:1;min-width:0" onchange="upd('${p.id}','nom',this.value)">`;
         h += `<div class="row-actions">
+          <button class="row-btn row-btn-notes${p.notes?' has-note':''}" onclick="ouvrirNotes('${p.id}')" title="${p.notes?'Voir la note':'Ajouter une note'}">💬</button>
           <button class="row-btn row-btn-menu${p.predecesseurs?.length?' has-pred':''}" onclick="toggleRowMenu(event,'${p.id}',false,'')" title="Actions">⋮</button>
         </div>`;
       } else {
@@ -474,7 +476,10 @@ function buildRow(p, total, isSub, parentId, lefts, orphanParentName = null) {
           h += `<span style="color:#38bdf8;font-size:11px;flex-shrink:0;margin-right:1px">↳</span>`;
         }
         h += `<input type="text" value="${esc(p.nom)}" style="flex:1;min-width:0" onchange="upd('${p.id}','nom',this.value)">`;
-        h += `<div class="row-actions"><button class="row-btn row-btn-menu${p.predecesseurs?.length?' has-pred':''}" onclick="toggleRowMenu(event,'${p.id}',true,'${parentId}')" title="Actions">⋮</button></div>`;
+        h += `<div class="row-actions">
+          <button class="row-btn row-btn-notes${p.notes?' has-note':''}" onclick="ouvrirNotes('${p.id}')" title="${p.notes?'Voir la note':'Ajouter une note'}">💬</button>
+          <button class="row-btn row-btn-menu${p.predecesseurs?.length?' has-pred':''}" onclick="toggleRowMenu(event,'${p.id}',true,'${parentId}')" title="Actions">⋮</button>
+        </div>`;
       }
       h += `</div>`;
     }
@@ -1109,6 +1114,114 @@ window.scrollAujourdhui = () => {
   if (s && todayIdx >= 0) s.scrollLeft = Math.max(0, todayIdx*W - 200);
 };
 
+window.scrollMoisEnCours = () => {
+  const s = document.getElementById('gantt-wrap');
+  if (!s) return;
+  const now = new Date();
+  const clef = `${ANNEE}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+  const idx  = idxDate(clef);
+  if (idx >= 0) s.scrollLeft = Math.max(0, idx*W - 20);
+  else s.scrollLeft = 0;
+};
+
+/* ── Notes ── */
+window.ouvrirNotes = (id) => {
+  const task = getById(id); if (!task) return;
+  const ro = userRole !== 'admin';
+  ouvrirModal(`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span style="font-size:1.2rem">💬</span>
+      <h3 style="margin:0">Notes</h3>
+    </div>
+    <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:12px;padding-left:2px">${esc(task.nom)}</p>
+    <textarea id="notes-ta" rows="6" ${ro?'readonly':''}
+      style="width:100%;padding:10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.88rem;font-family:inherit;resize:vertical;outline:none;transition:border-color .2s;${ro?'background:var(--gray-50);color:var(--gray-600)':''}"
+      onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--gray-200)'"
+      placeholder="Saisissez vos notes ici…">${esc(task.notes||'')}</textarea>
+    <div class="m-actions">
+      <button class="btn" onclick="fermerModal()">${ro?'Fermer':'Annuler'}</button>
+      ${ro?'':'<button class="btn btn-primary" onclick="sauverNotes(\''+id+'\')">Enregistrer</button>'}
+    </div>`);
+  if (!ro) setTimeout(() => { const ta = document.getElementById('notes-ta'); ta?.focus(); ta?.setSelectionRange(ta.value.length, ta.value.length); }, 50);
+};
+
+window.sauverNotes = (id) => {
+  const task = getById(id); if (!task) return;
+  task.notes = document.getElementById('notes-ta')?.value || '';
+  fermerModal(); renderAll(); scheduleSave();
+  toast(task.notes ? '💬 Note enregistrée' : 'Note supprimée', 'ok');
+};
+
+/* ── Statistiques ── */
+window.ouvrirStats = () => {
+  const rows  = rowsForRender().map(r => r.task);
+  const total = rows.length;
+  const parents = rows.filter(t => !t.id?.startsWith('st_'));
+  const subs    = rows.filter(t =>  t.id?.startsWith('st_'));
+
+  const byState = {};
+  ETATS.forEach(e => byState[e] = 0);
+  rows.forEach(t => { byState[t.etat] = (byState[t.etat]||0) + 1; });
+
+  const byTech = {};
+  rows.forEach(t => { if (t.tech) byTech[t.tech] = (byTech[t.tech]||0) + 1; });
+  const techEntries = Object.entries(byTech).sort((a,b) => b[1]-a[1]);
+
+  const bar = (cnt, col) => {
+    const pct = total ? Math.round(cnt/total*100) : 0;
+    return `<div style="flex:1;height:7px;background:var(--gray-100);border-radius:4px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${col};border-radius:4px;transition:width .4s"></div></div>`;
+  };
+
+  let h = `<h3 style="margin-bottom:14px">📈 Statistiques</h3>
+  <div style="display:flex;gap:10px;margin-bottom:16px">
+    <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
+      <div style="font-size:1.4rem;font-weight:700;color:var(--navy)">${parents.length}</div>
+      <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Opérations</div>
+    </div>
+    <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
+      <div style="font-size:1.4rem;font-weight:700;color:#0ea5e9">${subs.length}</div>
+      <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Sous-tâches</div>
+    </div>
+    <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
+      <div style="font-size:1.4rem;font-weight:700;color:var(--gray-700)">${total}</div>
+      <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Total</div>
+    </div>
+  </div>`;
+
+  h += `<div style="font-size:.72rem;font-weight:700;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Par état</div>`;
+  for (const e of ETATS) {
+    const cnt = byState[e]||0;
+    const col = etatColor(e);
+    const pct = total ? Math.round(cnt/total*100) : 0;
+    h += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
+      <span style="width:95px;font-size:.8rem;color:var(--gray-700);flex-shrink:0">${e}</span>
+      ${bar(cnt, col)}
+      <span style="font-size:.82rem;font-weight:700;color:var(--gray-700);min-width:22px;text-align:right">${cnt}</span>
+      <span style="font-size:.72rem;color:var(--gray-400);min-width:32px">${pct}%</span>
+    </div>`;
+  }
+
+  if (techEntries.length) {
+    h += `<div style="font-size:.72rem;font-weight:700;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;margin:14px 0 8px">Par attribution</div>`;
+    for (const [tech, cnt] of techEntries) {
+      const col = getTechColor(tech);
+      const pct = total ? Math.round(cnt/total*100) : 0;
+      h += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
+        <span style="width:95px;font-size:.8rem;color:var(--gray-700);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(tech)}</span>
+        ${bar(cnt, col)}
+        <span style="font-size:.82rem;font-weight:700;color:var(--gray-700);min-width:22px;text-align:right">${cnt}</span>
+        <span style="font-size:.72rem;color:var(--gray-400);min-width:32px">${pct}%</span>
+      </div>`;
+    }
+  }
+
+  h += `<div class="m-actions"><button class="btn btn-primary" onclick="fermerModal()">Fermer</button></div>`;
+  ouvrirModal(h);
+};
+
 /* ══════════════════════════════════════════════════════
    FILTRES
 ══════════════════════════════════════════════════════ */
@@ -1297,6 +1410,9 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { fermerModal(); fermerFiltrePanel(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
     if (userRole === 'admin') { e.preventDefault(); undo(); }
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    if (userRole === 'admin') { e.preventDefault(); saveNow(); toast('✓ Sauvegardé', 'ok'); }
   }
 });
 
