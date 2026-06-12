@@ -1154,12 +1154,29 @@ window.sauverNotes = (id) => {
   toast(task.notes ? '💬 Note enregistrée' : 'Note supprimée', 'ok');
 };
 
+/* ── Dérouler / Replier toutes les sous-tâches ── */
+window.toggleCollapseAll = () => {
+  const hasSubs = projets.some(p => p.soustaches?.length > 0);
+  if (!hasSubs) return;
+  const allCollapsed = projets.filter(p => p.soustaches?.length).every(p => collapsed[p.id]);
+  projets.forEach(p => { if (p.soustaches?.length) collapsed[p.id] = !allCollapsed; });
+  renderAll(); saveNow();
+  toast(allCollapsed ? 'Sous-tâches déroulées' : 'Sous-tâches repliées', 'ok');
+};
+
 /* ── Statistiques ── */
 window.ouvrirStats = () => {
-  const rows  = rowsForRender().map(r => r.task);
+  /* Compter TOUTES les tâches et sous-tâches, qu'elles soient repliées ou non */
+  const allTasks = [];
+  for (const p of projets) {
+    if (!matchFiltres(p) && !p.soustaches?.some(s => matchFiltres(s))) continue;
+    allTasks.push(p);
+    for (const s of (p.soustaches || [])) allTasks.push(s);
+  }
+  const rows  = allTasks;
   const total = rows.length;
-  const parents = rows.filter(t => !t.id?.startsWith('st_'));
-  const subs    = rows.filter(t =>  t.id?.startsWith('st_'));
+  const parents = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
+  const subs    = rows.filter(t => t.id?.startsWith('st_'));
 
   const byState = {};
   ETATS.forEach(e => byState[e] = 0);
