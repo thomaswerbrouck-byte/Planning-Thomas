@@ -1073,6 +1073,8 @@ window.toggleRowMenu = (e, id, isSub, parentId) => {
     items.push(`<button class="rmenu-item radd" onclick="ajouterSoustache('${id}');${_c}">
       <span class="rmenu-ico">＋</span>Ajouter une sous-tâche</button>`);
   }
+  items.push(`<button class="rmenu-item rnote" onclick="ouvrirNotes('${id}');${_c}">
+    <span class="rmenu-ico">💬</span>Notes${task?.notes ? ' <span style="width:6px;height:6px;border-radius:50%;background:#0369a1;display:inline-block;margin-left:4px;vertical-align:middle"></span>' : ''}</button>`);
   items.push(`<button class="rmenu-item rdup" onclick="${isSub ? `dupliquerSoustache('${parentId}','${id}')` : `dupliquer('${id}')`};${_c}">
     <span class="rmenu-ico">⧉</span>Dupliquer</button>`);
   items.push(`<button class="rmenu-item rlink${hasPred ? ' active' : ''}" onclick="ouvrirPredecesseurs('${id}');${_c}">

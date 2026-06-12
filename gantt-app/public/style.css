@@ -492,6 +492,7 @@ tr.row-drag-over td { box-shadow: inset 0 -2px 0 #3b82f6; }
   background: var(--gray-100);
 }
 .rmenu-item:hover .rmenu-ico { background: var(--gray-200); }
+.rmenu-item.rnote .rmenu-ico { background: #e0f2fe; color: #0369a1; }
 .rmenu-item.radd  .rmenu-ico { background: #dbeafe; color: #1d4ed8; }
 .rmenu-item.rdup  .rmenu-ico { background: #fef3c7; color: #d97706; }
 .rmenu-item.rlink .rmenu-ico { background: #f3e8ff; color: #7c3aed; }
