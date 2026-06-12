@@ -16,18 +16,18 @@
     <p id="login-hint">Choisissez votre nom</p>
     <select id="pseudo-input" onchange="document.getElementById('pwd-wrap').style.display='none';document.getElementById('pwd-input').value='';document.getElementById('btn-join').textContent='Rejoindre →'">
       <option value="">-- Choisissez votre nom --</option>
-      <optgroup label="Administration">
+      <optgroup label="Bureau">
         <option>Damien</option>
         <option>Cedric</option>
         <option>Thomas</option>
       </optgroup>
-      <optgroup label="Visualisation">
+      <optgroup label="Référents">
         <option>Stephane</option>
         <option>Denis</option>
         <option>Alexis</option>
         <option>William</option>
       </optgroup>
-      <optgroup label="Accès filtré">
+      <optgroup label="Entreprises">
         <option>ECO</option>
         <option>ASEPTIC</option>
       </optgroup>
@@ -83,8 +83,8 @@
       </button>
       <button class="btn" onclick="scrollAujourdhui()">📍 Aujourd'hui</button>
       <div class="sep admin-only"></div>
-      <button class="btn no-eco" onclick="ouvrirConfigTech()">⚙ Attributions</button>
-      <button class="btn" onclick="ouvrirConfigCols()">⚙ Colonnes</button>
+      <button class="btn no-eco" onclick="ouvrirConfigTech()">🎨 Attributions</button>
+      <button class="btn" onclick="ouvrirConfigCols()">☰ Colonnes</button>
       <button class="btn admin-only" onclick="toggleHistory()">🕐 Historique</button>
       <div class="sep"></div>
       <div class="zoom-grp">
