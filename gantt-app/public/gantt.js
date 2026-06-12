@@ -1116,7 +1116,7 @@ window.ouvrirFiltre = (key, btn) => {
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;color:var(--gray-900);padding:2px 0">
       <input type="checkbox" id="f-all" ${allChecked?'checked':''} style="cursor:pointer"> Tout sélectionner
     </label></div>
-  <div id="f-list" style="overflow-y:auto;max-height:190px;margin-bottom:8px">`;
+  <div id="f-list" style="overflow-y:auto;max-height:190px;margin-bottom:8px;display:flex;flex-direction:column;gap:1px">`;
   for (const v of vals) {
     const chk = allChecked || sel.has(v);
     let dot = '';
@@ -1127,7 +1127,7 @@ window.ouvrirFiltre = (key, btn) => {
     </label>`;
   }
   h += `</div>
-  <div id="f-noresult" style="display:none;padding:10px 4px;color:var(--gray-400);font-style:italic;text-align:center">Aucun résultat</div>
+  <div id="f-noresult" style="display:none;padding:10px 4px;color:var(--gray-400);font-style:italic;text-align:center;font-size:11px">Aucun résultat</div>
   <div style="display:flex;gap:6px;border-top:1px solid var(--gray-100);padding-top:8px">
     <button onclick="appliquerFiltre('${key}')" style="flex:1;padding:6px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit">Appliquer</button>
     <button onclick="reinitFiltre('${key}')" style="flex:1;padding:6px;background:white;border:1px solid var(--gray-200);border-radius:6px;cursor:pointer;font-size:11px;color:var(--gray-500);font-family:inherit">Effacer</button>
@@ -1199,8 +1199,15 @@ window._applyEcoFilter = window._applyRoleFilter;
 
 window.appliquerFiltre = key => {
   const panel = document.getElementById('filtre-panel'); if (!panel) return;
-  const vals = valeursUniques(key);
-  const sel  = [...panel.querySelectorAll('[data-val]:checked')].map(cb => cb.dataset.val);
+  const vals      = valeursUniques(key);
+  const hasSearch = (panel.querySelector('#f-search')?.value.trim().length ?? 0) > 0;
+
+  /* Avec recherche active : seuls les items visibles et cochés comptent.
+     Sans recherche : tous les cochés (comportement habituel). */
+  const sel = hasSearch
+    ? [...panel.querySelectorAll('label[data-label]:not([style*="none"]) [data-val]:checked')].map(cb => cb.dataset.val)
+    : [...panel.querySelectorAll('[data-val]:checked')].map(cb => cb.dataset.val);
+
   filtres[key] = sel.length === vals.length ? null : sel;
   _saveFiltres();
   fermerFiltrePanel(); renderAll();
