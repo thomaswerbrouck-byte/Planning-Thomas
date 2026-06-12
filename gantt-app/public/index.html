@@ -162,6 +162,7 @@
   const overlay = document.getElementById('login-overlay');
   const input   = document.getElementById('pseudo-input');
   document.getElementById('btn-join').onclick = join;
+  document.getElementById('pseudo-input').addEventListener('keydown', e => { if (e.key === 'Enter') join(); });
   document.getElementById('pwd-input').addEventListener('keydown', e => { if (e.key === 'Enter') join(); });
 
   function join() {
