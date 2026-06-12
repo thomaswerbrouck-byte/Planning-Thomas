@@ -1415,12 +1415,15 @@ window.telechargerSauvegarde = () => {
 ══════════════════════════════════════════════════════ */
 window.ouvrirExportPDF = () => {
   const printDebut = ANNEE+'-01-01', printFin = ANNEE+'-12-31';
+  const readOnly = userRole !== 'admin';
+  const roStyle  = readOnly ? 'pointer-events:none;background:var(--gray-50);color:var(--gray-500);' : '';
+  const btnStyle = readOnly ? 'opacity:.35;pointer-events:none;' : '';
   ouvrirModal(`
     <h3>📄 Export PDF</h3>
-    <p style="font-size:.83rem;color:var(--gray-500);margin-bottom:14px">Sélectionnez la plage de dates à exporter.</p>
-    <div class="field"><label>Date de début</label><input type="date" id="pdfD" value="${printDebut}"></div>
-    <div class="field"><label>Date de fin</label><input type="date" id="pdfF" value="${printFin}"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">
+    <p style="font-size:.83rem;color:var(--gray-500);margin-bottom:14px">${readOnly ? 'Export de l\'année complète.' : 'Sélectionnez la plage de dates à exporter.'}</p>
+    <div class="field"><label>Date de début</label><input type="date" id="pdfD" value="${printDebut}" style="${roStyle}" ${readOnly?'readonly':''}></div>
+    <div class="field"><label>Date de fin</label><input type="date" id="pdfF" value="${printFin}" style="${roStyle}" ${readOnly?'readonly':''}></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;${btnStyle}">
       ${[['T1','-01-01','-03-31'],['T2','-04-01','-06-30'],['T3','-07-01','-09-30'],['T4','-10-01','-12-31'],['Année','-01-01','-12-31']]
         .map(([l,d,f]) => `<button class="btn" onclick="document.getElementById('pdfD').value='${ANNEE+d}';document.getElementById('pdfF').value='${ANNEE+f}'">${l}</button>`).join('')}
     </div>
