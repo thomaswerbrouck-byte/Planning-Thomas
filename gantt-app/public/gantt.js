@@ -1047,18 +1047,19 @@ window.toggleRowMenu = (e, id, isSub, parentId) => {
   const menu    = document.createElement('div');
   menu.className = 'row-menu-drop';
 
+  const _c = `document.querySelector('.row-menu-drop')?.remove()`;
   const items = [];
   if (!isSub) {
-    items.push(`<button class="rmenu-item" onclick="ajouterSoustache('${id}');document.querySelector('.row-menu-drop')?.remove()">
+    items.push(`<button class="rmenu-item radd" onclick="ajouterSoustache('${id}');${_c}">
       <span class="rmenu-ico">＋</span>Ajouter une sous-tâche</button>`);
   }
-  items.push(`<button class="rmenu-item" onclick="${isSub ? `dupliquerSoustache('${parentId}','${id}')` : `dupliquer('${id}')`};document.querySelector('.row-menu-drop')?.remove()">
+  items.push(`<button class="rmenu-item rdup" onclick="${isSub ? `dupliquerSoustache('${parentId}','${id}')` : `dupliquer('${id}')`};${_c}">
     <span class="rmenu-ico">⧉</span>Dupliquer</button>`);
-  items.push(`<button class="rmenu-item rlink${hasPred ? ' active' : ''}" onclick="ouvrirPredecesseurs('${id}');document.querySelector('.row-menu-drop')?.remove()">
-    <span class="rmenu-ico">🔗</span>Prédécesseurs${hasPred ? ' <span style="color:#f97316;font-size:9px">●</span>' : ''}</button>`);
+  items.push(`<button class="rmenu-item rlink${hasPred ? ' active' : ''}" onclick="ouvrirPredecesseurs('${id}');${_c}">
+    <span class="rmenu-ico">🔗</span>Prédécesseurs${hasPred ? '&nbsp;<span style="color:#ea580c;font-size:8px;font-weight:700">●</span>' : ''}</button>`);
   items.push(`<div class="rmenu-sep"></div>`);
-  items.push(`<button class="rmenu-item rdel" onclick="${isSub ? `supprimerSoustache('${parentId}','${id}')` : `supprimer('${id}')`};document.querySelector('.row-menu-drop')?.remove()">
-    <span class="rmenu-ico">✕</span>Supprimer</button>`);
+  items.push(`<button class="rmenu-item rdel" onclick="${isSub ? `supprimerSoustache('${parentId}','${id}')` : `supprimer('${id}')`};${_c}">
+    <span class="rmenu-ico">🗑</span>Supprimer</button>`);
 
   menu.innerHTML = items.join('');
   document.body.appendChild(menu);
@@ -1108,37 +1109,60 @@ window.ouvrirFiltre = (key, btn) => {
 
   const panel = document.createElement('div');
   panel.id = 'filtre-panel';
-  panel.style.cssText = `position:fixed;z-index:99999;background:white;border:1px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:10px;min-width:200px;max-height:320px;display:flex;flex-direction:column;font-family:inherit;font-size:11px;top:${rect.bottom+4}px;left:${Math.min(rect.left, window.innerWidth-220)}px`;
+  panel.style.cssText = `position:fixed;z-index:99999;background:white;border:1px solid var(--gray-200);border-radius:10px;box-shadow:0 4px 6px -1px rgba(0,0,0,.07),0 10px 32px -4px rgba(0,0,0,.14);padding:10px;min-width:220px;max-height:360px;display:flex;flex-direction:column;font-family:inherit;font-size:11px;top:${rect.bottom+4}px;left:${Math.min(rect.left, window.innerWidth-240)}px`;
 
-  let h = `<div style="padding-bottom:7px;margin-bottom:5px;border-bottom:1px solid var(--gray-100)">
+  let h = `<input type="text" class="filtre-search" id="f-search" placeholder="🔍 Rechercher…" autocomplete="off">
+  <div style="padding-bottom:7px;margin-bottom:5px;border-bottom:1px solid var(--gray-100)">
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;color:var(--gray-900);padding:2px 0">
       <input type="checkbox" id="f-all" ${allChecked?'checked':''} style="cursor:pointer"> Tout sélectionner
     </label></div>
-  <div style="overflow-y:auto;max-height:190px;margin-bottom:8px">`;
+  <div id="f-list" style="overflow-y:auto;max-height:190px;margin-bottom:8px">`;
   for (const v of vals) {
     const chk = allChecked || sel.has(v);
     let dot = '';
     if (key==='tech') dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${getTechColor(v)};flex-shrink:0"></span>`;
     if (key==='etat') dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${etatColor(v)};flex-shrink:0"></span>`;
-    h += `<label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:3px 2px;border-radius:4px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+    h += `<label data-label="${esc(v).toLowerCase()}" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:3px 2px;border-radius:4px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
       <input type="checkbox" data-val="${esc(v)}" ${chk?'checked':''} style="cursor:pointer"> ${dot}<span>${esc(v)||'<i style="color:var(--gray-300)">(vide)</i>'}</span>
     </label>`;
   }
   h += `</div>
+  <div id="f-noresult" style="display:none;padding:10px 4px;color:var(--gray-400);font-style:italic;text-align:center">Aucun résultat</div>
   <div style="display:flex;gap:6px;border-top:1px solid var(--gray-100);padding-top:8px">
-    <button onclick="appliquerFiltre('${key}')" style="flex:1;padding:6px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:500;font-family:inherit">OK</button>
+    <button onclick="appliquerFiltre('${key}')" style="flex:1;padding:6px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit">Appliquer</button>
     <button onclick="reinitFiltre('${key}')" style="flex:1;padding:6px;background:white;border:1px solid var(--gray-200);border-radius:6px;cursor:pointer;font-size:11px;color:var(--gray-500);font-family:inherit">Effacer</button>
   </div>`;
   panel.innerHTML = h;
   document.body.appendChild(panel);
   filtreActif = key;
 
+  /* Recherche en temps réel */
+  const searchEl   = panel.querySelector('#f-search');
+  const listEl     = panel.querySelector('#f-list');
+  const noResultEl = panel.querySelector('#f-noresult');
+  searchEl.addEventListener('input', () => {
+    const q = searchEl.value.toLowerCase().trim();
+    let visible = 0;
+    listEl.querySelectorAll('label[data-label]').forEach(lbl => {
+      const match = !q || lbl.dataset.label.includes(q);
+      lbl.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    noResultEl.style.display = visible === 0 ? '' : 'none';
+    /* Mettre à jour "Tout sélectionner" selon les items visibles */
+    const visibleCbs = [...listEl.querySelectorAll('label[data-label]:not([style*="none"]) [data-val]')];
+    panel.querySelector('#f-all').checked = visibleCbs.length > 0 && visibleCbs.every(c => c.checked);
+  });
+  searchEl.focus();
+
   panel.querySelector('#f-all').addEventListener('change', function() {
-    panel.querySelectorAll('[data-val]').forEach(cb => cb.checked = this.checked);
+    /* Coche/décoche uniquement les items visibles */
+    listEl.querySelectorAll('label[data-label]:not([style*="none"]) [data-val]').forEach(cb => cb.checked = this.checked);
   });
   panel.querySelectorAll('[data-val]').forEach(cb => {
     cb.addEventListener('change', () => {
-      panel.querySelector('#f-all').checked = [...panel.querySelectorAll('[data-val]')].every(c => c.checked);
+      const visibleCbs = [...listEl.querySelectorAll('label[data-label]:not([style*="none"]) [data-val]')];
+      panel.querySelector('#f-all').checked = visibleCbs.every(c => c.checked);
     });
   });
   setTimeout(() => document.addEventListener('mousedown', fermerFiltreOutside), 50);

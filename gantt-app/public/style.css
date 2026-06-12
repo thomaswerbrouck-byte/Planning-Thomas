@@ -440,36 +440,67 @@ tr:hover .row-btn { opacity: 1; }
 tr.row-dragging td { opacity: .4; }
 tr.row-drag-over td { box-shadow: inset 0 -2px 0 #3b82f6; }
 
-.row-btn-menu { background: #94a3b8; font-size: 15px; letter-spacing: -2px; font-weight: 700; }
-.row-btn-menu:hover { background: var(--blue) !important; }
-.row-btn-menu.has-pred { background: #f97316; opacity: 1 !important; }
+.row-btn-menu {
+  background: transparent;
+  color: var(--gray-400) !important;
+  font-size: 16px; letter-spacing: -1px; font-weight: 900;
+  border: 1px solid transparent !important;
+  width: 20px !important; height: 20px !important;
+  border-radius: 4px !important;
+  transition: all .12s !important;
+}
+.row-btn-menu:hover { background: var(--gray-100) !important; color: var(--gray-700) !important; border-color: var(--gray-200) !important; opacity: 1 !important; }
+.row-btn-menu.has-pred { color: #f97316 !important; opacity: 1 !important; }
 
 /* ─── Row actions dropdown menu ─────────── */
 .row-menu-drop {
   position: fixed; z-index: 99999;
   background: white;
   border: 1px solid var(--gray-200);
-  border-radius: 8px;
-  box-shadow: 0 8px 28px rgba(0,0,0,.16);
-  padding: 4px;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,.07), 0 10px 32px -4px rgba(0,0,0,.14);
+  padding: 5px;
   font-family: 'Segoe UI', system-ui, sans-serif;
-  min-width: 178px;
+  min-width: 192px;
 }
 .rmenu-item {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; padding: 6px 10px;
-  border: none; border-radius: 5px;
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; padding: 7px 10px;
+  border: none; border-radius: 6px;
   background: transparent; font-size: .8rem;
   color: var(--gray-700); cursor: pointer;
   text-align: left; font-family: inherit;
   transition: background .1s; white-space: nowrap;
+  font-weight: 500;
 }
-.rmenu-item:hover { background: var(--gray-50); }
+.rmenu-item:hover { background: var(--gray-100); }
 .rmenu-item.rdel { color: var(--red); }
-.rmenu-item.rdel:hover { background: #fef2f2; }
+.rmenu-item.rdel:hover { background: #fef2f2; color: #b91c1c; }
 .rmenu-item.rlink.active { color: #f97316; }
-.rmenu-ico { width: 18px; text-align: center; flex-shrink: 0; font-size: .85rem; }
-.rmenu-sep { height: 1px; background: var(--gray-100); margin: 3px 4px; }
+.rmenu-ico {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; font-size: .82rem; flex-shrink: 0;
+  background: var(--gray-100);
+}
+.rmenu-item:hover .rmenu-ico { background: var(--gray-200); }
+.rmenu-item.radd  .rmenu-ico { background: #dbeafe; color: #1d4ed8; }
+.rmenu-item.rdup  .rmenu-ico { background: #fef3c7; color: #d97706; }
+.rmenu-item.rlink .rmenu-ico { background: #f3e8ff; color: #7c3aed; }
+.rmenu-item.rlink.active .rmenu-ico { background: #ffedd5; color: #ea580c; }
+.rmenu-item.rdel  .rmenu-ico { background: #fee2e2; color: var(--red); }
+.rmenu-sep { height: 1px; background: var(--gray-100); margin: 4px 5px; }
+
+/* ─── Filter search input ────────────────── */
+.filtre-search {
+  width: 100%; padding: 6px 9px;
+  border: 1.5px solid var(--gray-200); border-radius: 6px;
+  font-size: 11px; font-family: inherit; color: var(--gray-900);
+  outline: none; transition: border-color .15s;
+  background: var(--gray-50);
+  margin-bottom: 7px;
+}
+.filtre-search:focus { border-color: var(--blue); background: white; }
 
 /* ─── Orphan subtask badge ───────────────── */
 .orphan-badge {
