@@ -1180,9 +1180,8 @@ window.ouvrirStats = () => {
   const rows = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
   const nbSubs = rows.reduce((s, p) => s + (p.soustaches?.length || 0), 0);
 
-  /* Colonne primaire = première colonne personnalisée (ex: "Opérations") */
+  /* Colonnes personnalisées visibles */
   const customCols = colonnes.filter(c => !COLS_BUILTIN.has(c.key) && c.visible !== false);
-  const primaryCol = customCols[0] || null; // clé de référence pour les comptages
 
   /* Colonnes fixes groupables */
   const fixedCols = [
@@ -1190,51 +1189,25 @@ window.ouvrirStats = () => {
     { key: 'tech',   label: colonnes.find(c=>c.key==='tech')?.label   || 'Attribution', color: null },
   ];
 
-  /* Toutes les colonnes de regroupement : perso d'abord, puis fixes */
+  /* Colonnes perso d'abord, puis fixes */
   const groupCols = [
     ...customCols.map(c => ({ key: c.key, label: c.label, color: 'var(--navy)' })),
     ...fixedCols,
   ];
 
-  /* Calcul :
-     - Pour la colonne primaire (opérations) : on compte le nb de tâches par valeur
-     - Pour toutes les autres colonnes : on compte le nb de valeurs UNIQUES de la colonne primaire par groupe
-     - Pour "par état" : nb de valeurs uniques de la colonne primaire par état
-  */
-  const byState  = {}; ETATS.forEach(e => byState[e] = new Set());
-  const byGroup  = {}; groupCols.forEach(c => byGroup[c.key] = {});
+  /* Comptage simple : nb de tâches parentes par valeur de groupe */
+  const stateCount = {}; ETATS.forEach(e => stateCount[e] = 0);
+  const groupCount = {}; groupCols.forEach(c => groupCount[c.key] = {});
 
   rows.forEach(p => {
-    const primVal = primaryCol ? (p[primaryCol.key] || '') : p.id;
-
-    /* État : accumule les valeurs de la colonne primaire */
-    if (p.etat) (byState[p.etat] = byState[p.etat] || new Set()).add(primVal);
-
+    stateCount[p.etat] = (stateCount[p.etat]||0) + 1;
     groupCols.forEach(c => {
       const val = p[c.key]; if (!val) return;
-      if (!byGroup[c.key][val]) byGroup[c.key][val] = new Set();
-      if (c.key === primaryCol?.key) {
-        /* Pour la colonne primaire elle-même : on compte les tâches (chaque tâche = 1) */
-        byGroup[c.key][val].add(p.id);
-      } else {
-        /* Pour les autres colonnes : on compte les valeurs uniques de la colonne primaire */
-        byGroup[c.key][val].add(primVal);
-      }
+      groupCount[c.key][val] = (groupCount[c.key][val]||0) + 1;
     });
   });
 
-  /* Convertir les Sets en nombres */
-  const stateCount  = {}; ETATS.forEach(e => stateCount[e] = (byState[e]?.size || 0));
-  const groupCount  = {};
-  groupCols.forEach(c => {
-    groupCount[c.key] = {};
-    Object.entries(byGroup[c.key]).forEach(([k,s]) => groupCount[c.key][k] = s.size);
-  });
-
-  /* Total affiché = nb de valeurs uniques de la colonne primaire (ou nb de tâches si pas de colonne perso) */
-  const total = primaryCol
-    ? new Set(rows.map(p => p[primaryCol.key]).filter(Boolean)).size
-    : rows.length;
+  const total = rows.length;
 
   const bar = (cnt, col, ref) => {
     const pct = ref ? Math.round(cnt/ref*100) : 0;
@@ -1264,7 +1237,7 @@ window.ouvrirStats = () => {
   <div style="display:flex;gap:10px;margin-bottom:4px">
     <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
       <div style="font-size:1.4rem;font-weight:700;color:var(--navy)">${total}</div>
-      <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">${primaryCol ? esc(primaryCol.label) : 'Tâches'} uniques</div>
+      <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Tâches</div>
     </div>
     <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
       <div style="font-size:1.4rem;font-weight:700;color:#0ea5e9">${nbSubs}</div>
