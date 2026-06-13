@@ -1187,26 +1187,33 @@ window.ouvrirStats = () => {
   const parents = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
   const subs    = allTasks.filter(t => t.id?.startsWith('st_'));
 
-  /* Regroupements */
-  const byState  = {}; ETATS.forEach(e => byState[e] = 0);
-  const byNom    = {}, byClient = {}, byTech = {};
+  /* Colonnes fixes groupables */
+  const fixedCols = [
+    { key: 'client', label: colonnes.find(c=>c.key==='client')?.label || 'Association', color: '#0ea5e9' },
+    { key: 'tech',   label: colonnes.find(c=>c.key==='tech')?.label   || 'Attribution', color: null },
+  ];
+  /* Colonnes personnalisées */
+  const customCols = colonnes.filter(c => !COLS_BUILTIN.has(c.key) && c.visible !== false);
+
+  /* Tous les groupements à afficher */
+  const groupCols = [...fixedCols, ...customCols.map(c => ({ key: c.key, label: c.label, color: 'var(--navy)' }))];
+
+  /* Calcul des regroupements */
+  const byState = {}; ETATS.forEach(e => byState[e] = 0);
+  const byGroup = {}; groupCols.forEach(c => byGroup[c.key] = {});
   allTasks.forEach(t => {
-    byState[t.etat]  = (byState[t.etat]||0) + 1;
-    if (t.nom)    byNom[t.nom]       = (byNom[t.nom]||0) + 1;
-    if (t.client) byClient[t.client] = (byClient[t.client]||0) + 1;
-    if (t.tech)   byTech[t.tech]     = (byTech[t.tech]||0) + 1;
+    byState[t.etat] = (byState[t.etat]||0) + 1;
+    groupCols.forEach(c => {
+      const val = t[c.key];
+      if (val) byGroup[c.key][val] = (byGroup[c.key][val]||0) + 1;
+    });
   });
-  const nomEntries    = Object.entries(byNom).sort((a,b) => b[1]-a[1]);
-  const clientEntries = Object.entries(byClient).sort((a,b) => b[1]-a[1]);
-  const techEntries   = Object.entries(byTech).sort((a,b) => b[1]-a[1]);
 
   const bar = (cnt, col, ref) => {
     const pct = ref ? Math.round(cnt/ref*100) : 0;
     return `<div style="flex:1;height:7px;background:var(--gray-100);border-radius:4px;overflow:hidden">
       <div style="height:100%;width:${pct}%;background:${col};border-radius:4px;transition:width .4s"></div></div>`;
   };
-  const sectionTitle = txt =>
-    `<div style="font-size:.72rem;font-weight:700;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;margin:16px 0 8px">${txt}</div>`;
   const statRow = (label, cnt, col, ref, dotColor) =>
     `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <span style="width:8px;height:8px;border-radius:50%;background:${dotColor||col};flex-shrink:0"></span>
@@ -1216,11 +1223,14 @@ window.ouvrirStats = () => {
       <span style="font-size:.72rem;color:var(--gray-400);min-width:32px">${ref?Math.round(cnt/ref*100):0}%</span>
     </div>`;
 
+  /* IDs d'onglets : état + une par colonne groupable */
+  const tabs = [{ id: 'état', label: 'Par état' }, ...groupCols.map(c => ({ id: 'g_'+c.key, label: 'Par '+c.label.toLowerCase() }))];
+
   let h = `<h3 style="margin-bottom:14px">📈 Statistiques</h3>
   <div style="display:flex;gap:10px;margin-bottom:4px">
     <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
       <div style="font-size:1.4rem;font-weight:700;color:var(--navy)">${parents.length}</div>
-      <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Opérations</div>
+      <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Tâches</div>
     </div>
     <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
       <div style="font-size:1.4rem;font-weight:700;color:#0ea5e9">${subs.length}</div>
@@ -1232,10 +1242,10 @@ window.ouvrirStats = () => {
     </div>
   </div>`;
 
-  /* ── Onglets ── */
-  h += `<div id="stats-tabs" style="display:flex;gap:4px;margin:14px 0 12px;border-bottom:2px solid var(--gray-200)">
-    ${[['état','Par état'],['oper','Par opération'],['assoc','Par association'],['tech','Par attribution']].map(([k,l],i) =>
-      `<button onclick="statsTab('${k}')" id="stab-${k}" style="padding:5px 12px;font-size:.78rem;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid ${i===0?'var(--blue)':'transparent'};margin-bottom:-2px;color:${i===0?'var(--blue)':'var(--gray-500)'};font-family:inherit">${l}</button>`
+  /* Onglets */
+  h += `<div id="stats-tabs" style="display:flex;gap:0;flex-wrap:wrap;margin:14px 0 12px;border-bottom:2px solid var(--gray-200)">
+    ${tabs.map((t,i) =>
+      `<button onclick="statsTab('${t.id}')" id="stab-${t.id}" style="padding:5px 11px;font-size:.76rem;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid ${i===0?'var(--blue)':'transparent'};margin-bottom:-2px;color:${i===0?'var(--blue)':'var(--gray-500)'};font-family:inherit;white-space:nowrap">${t.label}</button>`
     ).join('')}
   </div>
   <div id="stats-content">`;
@@ -1248,41 +1258,34 @@ window.ouvrirStats = () => {
   }
   h += `</div>`;
 
-  /* Panneau opérations */
-  h += `<div id="sp-oper" style="display:none">`;
-  if (nomEntries.length) {
-    const max = nomEntries[0][1];
-    nomEntries.forEach(([nom, cnt]) => { h += statRow(nom, cnt, 'var(--navy)', max, 'var(--navy)'); });
-  } else h += `<p style="color:var(--gray-400);font-size:.82rem">Aucune donnée</p>`;
-  h += `</div>`;
-
-  /* Panneau associations */
-  h += `<div id="sp-assoc" style="display:none">`;
-  if (clientEntries.length) {
-    const max = clientEntries[0][1];
-    clientEntries.forEach(([cl, cnt]) => { h += statRow(cl, cnt, '#0ea5e9', max, '#0ea5e9'); });
-  } else h += `<p style="color:var(--gray-400);font-size:.82rem">Aucune donnée</p>`;
-  h += `</div>`;
-
-  /* Panneau attributions */
-  h += `<div id="sp-tech" style="display:none">`;
-  if (techEntries.length) {
-    const max = techEntries[0][1];
-    techEntries.forEach(([tech, cnt]) => { h += statRow(tech, cnt, getTechColor(tech), max); });
-  } else h += `<p style="color:var(--gray-400);font-size:.82rem">Aucune donnée</p>`;
-  h += `</div>`;
+  /* Panneaux colonnes groupables */
+  groupCols.forEach(c => {
+    const entries = Object.entries(byGroup[c.key]).sort((a,b) => b[1]-a[1]);
+    const max = entries[0]?.[1] || 1;
+    h += `<div id="sp-g_${c.key}" style="display:none">`;
+    if (entries.length) {
+      entries.forEach(([val, cnt]) => {
+        const col = c.key === 'tech' ? getTechColor(val) : (c.color || 'var(--navy)');
+        h += statRow(val, cnt, col, max);
+      });
+    } else {
+      h += `<p style="color:var(--gray-400);font-size:.82rem">Aucune donnée</p>`;
+    }
+    h += `</div>`;
+  });
 
   h += `</div><div class="m-actions"><button class="btn btn-primary" onclick="fermerModal()">Fermer</button></div>`;
   ouvrirModal(h);
 };
 
 window.statsTab = (key) => {
-  ['état','oper','assoc','tech'].forEach(k => {
-    const tab  = document.getElementById('stab-'+k);
-    const pane = document.getElementById('sp-'+k);
-    const active = k === key;
-    if (tab)  { tab.style.borderBottomColor = active ? 'var(--blue)' : 'transparent'; tab.style.color = active ? 'var(--blue)' : 'var(--gray-500)'; }
-    if (pane) pane.style.display = active ? '' : 'none';
+  document.querySelectorAll('#stats-tabs button').forEach(btn => {
+    const active = btn.id === 'stab-' + key;
+    btn.style.borderBottomColor = active ? 'var(--blue)' : 'transparent';
+    btn.style.color = active ? 'var(--blue)' : 'var(--gray-500)';
+  });
+  document.querySelectorAll('#stats-content > div').forEach(pane => {
+    pane.style.display = pane.id === 'sp-' + key ? '' : 'none';
   });
 };
 
