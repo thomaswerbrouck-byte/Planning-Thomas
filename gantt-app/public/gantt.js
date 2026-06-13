@@ -1176,35 +1176,33 @@ window.toggleCollapseAll = () => {
 
 /* ── Statistiques ── */
 window.ouvrirStats = () => {
-  /* Toutes les tâches et sous-tâches visibles */
-  const allTasks = [];
-  for (const p of projets) {
-    if (!matchFiltres(p) && !p.soustaches?.some(s => matchFiltres(s))) continue;
-    allTasks.push(p);
-    for (const s of (p.soustaches || [])) allTasks.push(s);
-  }
-  const total   = allTasks.length;
-  const parents = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
-  const subs    = allTasks.filter(t => t.id?.startsWith('st_'));
+  /* Tâches parentes uniquement (les opérations = unité de comptage) */
+  const rows = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
+  const total = rows.length;
+  const nbSubs = rows.reduce((s, p) => s + (p.soustaches?.length || 0), 0);
+
+  /* Colonnes personnalisées visibles — c'est la base des stats */
+  const customCols = colonnes.filter(c => !COLS_BUILTIN.has(c.key) && c.visible !== false);
 
   /* Colonnes fixes groupables */
   const fixedCols = [
     { key: 'client', label: colonnes.find(c=>c.key==='client')?.label || 'Association', color: '#0ea5e9' },
     { key: 'tech',   label: colonnes.find(c=>c.key==='tech')?.label   || 'Attribution', color: null },
   ];
-  /* Colonnes personnalisées */
-  const customCols = colonnes.filter(c => !COLS_BUILTIN.has(c.key) && c.visible !== false);
 
-  /* Tous les groupements à afficher */
-  const groupCols = [...fixedCols, ...customCols.map(c => ({ key: c.key, label: c.label, color: 'var(--navy)' }))];
+  /* Colonnes perso en premier (dont "opérations"), puis fixes */
+  const groupCols = [
+    ...customCols.map(c => ({ key: c.key, label: c.label, color: 'var(--navy)' })),
+    ...fixedCols,
+  ];
 
-  /* Calcul des regroupements */
+  /* Calcul — on compte les tâches parentes uniquement */
   const byState = {}; ETATS.forEach(e => byState[e] = 0);
   const byGroup = {}; groupCols.forEach(c => byGroup[c.key] = {});
-  allTasks.forEach(t => {
-    byState[t.etat] = (byState[t.etat]||0) + 1;
+  rows.forEach(p => {
+    byState[p.etat] = (byState[p.etat]||0) + 1;
     groupCols.forEach(c => {
-      const val = t[c.key];
+      const val = p[c.key];
       if (val) byGroup[c.key][val] = (byGroup[c.key][val]||0) + 1;
     });
   });
@@ -1214,44 +1212,51 @@ window.ouvrirStats = () => {
     return `<div style="flex:1;height:7px;background:var(--gray-100);border-radius:4px;overflow:hidden">
       <div style="height:100%;width:${pct}%;background:${col};border-radius:4px;transition:width .4s"></div></div>`;
   };
-  const statRow = (label, cnt, col, ref, dotColor) =>
+  const statRow = (label, cnt, col, ref) =>
     `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <span style="width:8px;height:8px;border-radius:50%;background:${dotColor||col};flex-shrink:0"></span>
+      <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
       <span style="width:130px;font-size:.8rem;color:var(--gray-700);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(label)}">${esc(label)}</span>
       ${bar(cnt, col, ref)}
       <span style="font-size:.82rem;font-weight:700;color:var(--gray-700);min-width:22px;text-align:right">${cnt}</span>
       <span style="font-size:.72rem;color:var(--gray-400);min-width:32px">${ref?Math.round(cnt/ref*100):0}%</span>
     </div>`;
 
-  /* IDs d'onglets : état + une par colonne groupable */
-  const tabs = [{ id: 'état', label: 'Par état' }, ...groupCols.map(c => ({ id: 'g_'+c.key, label: 'Par '+c.label.toLowerCase() }))];
+  /* Premier onglet = première colonne perso si elle existe, sinon état */
+  const firstTab = groupCols.length ? 'g_'+groupCols[0].key : 'état';
+  const tabs = [
+    ...groupCols.map(c => ({ id: 'g_'+c.key, label: 'Par '+c.label.toLowerCase() })),
+    { id: 'état', label: 'Par état' },
+    ...fixedCols.filter(c => !groupCols.find(g=>g.key===c.key) /* évite doublon */).map(c => ({ id: 'g_'+c.key, label: 'Par '+c.label.toLowerCase() })),
+  ];
+  /* Dédoublonnage (fixedCols déjà inclus dans groupCols) */
+  const tabsSeen = new Set(); const tabsUniq = tabs.filter(t => { if(tabsSeen.has(t.id)) return false; tabsSeen.add(t.id); return true; });
 
   let h = `<h3 style="margin-bottom:14px">📈 Statistiques</h3>
   <div style="display:flex;gap:10px;margin-bottom:4px">
     <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
-      <div style="font-size:1.4rem;font-weight:700;color:var(--navy)">${parents.length}</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--navy)">${total}</div>
       <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Tâches</div>
     </div>
     <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
-      <div style="font-size:1.4rem;font-weight:700;color:#0ea5e9">${subs.length}</div>
+      <div style="font-size:1.4rem;font-weight:700;color:#0ea5e9">${nbSubs}</div>
       <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Sous-tâches</div>
     </div>
     <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
-      <div style="font-size:1.4rem;font-weight:700;color:var(--gray-700)">${total}</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--gray-700)">${total+nbSubs}</div>
       <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Total</div>
     </div>
   </div>`;
 
   /* Onglets */
   h += `<div id="stats-tabs" style="display:flex;gap:0;flex-wrap:wrap;margin:14px 0 12px;border-bottom:2px solid var(--gray-200)">
-    ${tabs.map((t,i) =>
-      `<button onclick="statsTab('${t.id}')" id="stab-${t.id}" style="padding:5px 11px;font-size:.76rem;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid ${i===0?'var(--blue)':'transparent'};margin-bottom:-2px;color:${i===0?'var(--blue)':'var(--gray-500)'};font-family:inherit;white-space:nowrap">${t.label}</button>`
+    ${tabsUniq.map(t =>
+      `<button onclick="statsTab('${t.id}')" id="stab-${t.id}" style="padding:5px 11px;font-size:.76rem;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid ${t.id===firstTab?'var(--blue)':'transparent'};margin-bottom:-2px;color:${t.id===firstTab?'var(--blue)':'var(--gray-500)'};font-family:inherit;white-space:nowrap">${t.label}</button>`
     ).join('')}
   </div>
   <div id="stats-content">`;
 
   /* Panneau état */
-  h += `<div id="sp-état">`;
+  h += `<div id="sp-état" style="display:${firstTab==='état'?'':'none'}">`;
   for (const e of ETATS) {
     const cnt = byState[e]||0;
     h += statRow(e, cnt, etatColor(e), total);
@@ -1262,7 +1267,8 @@ window.ouvrirStats = () => {
   groupCols.forEach(c => {
     const entries = Object.entries(byGroup[c.key]).sort((a,b) => b[1]-a[1]);
     const max = entries[0]?.[1] || 1;
-    h += `<div id="sp-g_${c.key}" style="display:none">`;
+    const isFirst = firstTab === 'g_'+c.key;
+    h += `<div id="sp-g_${c.key}" style="display:${isFirst?'':'none'}">`;
     if (entries.length) {
       entries.forEach(([val, cnt]) => {
         const col = c.key === 'tech' ? getTechColor(val) : (c.color || 'var(--navy)');
