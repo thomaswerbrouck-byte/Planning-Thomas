@@ -67,9 +67,16 @@ var sortCol = null, sortDir = 1;
 var collapsed = {};
 var filtres = {};
 
-var PALETTES = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6',
-                '#ec4899','#14b8a6','#f97316','#6366f1','#84cc16',
-                '#e11d48','#0ea5e9','#d946ef','#78716c','#64748b'];
+var PALETTES = [
+  /* Bleus   */ '#1d4ed8','#2563eb','#3b82f6','#60a5fa','#93c5fd','#0ea5e9','#38bdf8','#7dd3fc',
+  /* Verts   */ '#15803d','#16a34a','#22c55e','#4ade80','#10b981','#14b8a6','#2dd4bf','#84cc16',
+  /* Jaunes  */ '#92400e','#b45309','#d97706','#f59e0b','#fbbf24','#fde047','#ca8a04','#a16207',
+  /* Rouges  */ '#991b1b','#dc2626','#ef4444','#f87171','#e11d48','#be123c','#fb7185','#f43f5e',
+  /* Violets */ '#4c1d95','#7c3aed','#8b5cf6','#a78bfa','#6d28d9','#9333ea','#a855f7','#d946ef',
+  /* Roses   */ '#831843','#be185d','#db2777','#ec4899','#f472b6','#f9a8d4','#e879f9','#c026d3',
+  /* Oranges */ '#9a3412','#c2410c','#ea580c','#f97316','#fb923c','#fdba74','#d97706','#f59e0b',
+  /* Neutres */ '#1e293b','#334155','#475569','#64748b','#78716c','#a8a29e','#57534e','#292524',
+];
 
 var ETAT_META = {
   'À venir'   : { cls: 'etat-aVenir',  color: '#64748b' },
@@ -488,6 +495,7 @@ function buildRow(p, total, isSub, parentId, lefts, orphanParentName = null) {
     else if (ck === 'fin')    h += `<input type="date"  value="${p.fin}"         onchange="upd('${p.id}','fin',this.value)">`;
     else if (ck === 'tech')   h += `<select onchange="upd('${p.id}','tech',this.value)" style="background:${colL};color:${col};font-weight:600">${techOpts}</select>`;
     else if (ck === 'etat')   h += `<select class="${ETAT_META[p.etat]?.cls??''}" onchange="upd('${p.id}','etat',this.value)">${etatOpts}</select>`;
+    else h += `<input type="text" value="${esc(p[ck]||'')}" onchange="upd('${p.id}','${ck}',this.value)">`;
     h += `</td>`;
   }
 
@@ -1369,30 +1377,50 @@ function fermerFiltreOutside(e) { const p = document.getElementById('filtre-pane
 window.ouvrirConfigTech = () => {
   let h = `<h3>Attributions &amp; couleurs</h3>`;
   techniciens.forEach((t, i) => {
-    h += `<div class="cfg-row">
-      <div id="dot${i}" style="width:11px;height:11px;border-radius:50%;background:${t.couleur};flex-shrink:0"></div>
-      <input type="text" value="${esc(t.nom)}" style="flex:1" onchange="updateTechNom(${i},this.value)">
-      <div class="color-grid" id="cg${i}">`;
+    h += `<div class="cfg-row" style="flex-wrap:wrap;gap:6px">
+      <div id="dot${i}" style="width:11px;height:11px;border-radius:50%;background:${t.couleur};flex-shrink:0;margin-top:2px"></div>
+      <input type="text" value="${esc(t.nom)}" style="flex:1;min-width:120px" onchange="updateTechNom(${i},this.value)">
+      <button onclick="supprimerTech(${i})" title="Supprimer" style="background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:6px;padding:2px 7px;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>
+      <div style="width:100%;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <div class="color-grid" id="cg${i}" style="flex:1">`;
     for (const c of PALETTES)
       h += `<div class="swatch ${c===t.couleur?'sel':''}" style="background:${c}" data-hex="${c}" onclick="updateTechCoul(${i},'${c}')"></div>`;
-    h += `</div></div>`;
+    h += `</div>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.75rem;color:var(--gray-500);flex-shrink:0;cursor:pointer" title="Couleur personnalisée">
+          <input type="color" value="${t.couleur}" style="width:26px;height:26px;padding:1px;border:1px solid var(--gray-300);border-radius:5px;cursor:pointer" oninput="updateTechCoul(${i},this.value)">
+          Perso
+        </label>
+      </div>
+    </div>`;
   });
   h += `<button class="btn btn-success" style="margin-top:12px" onclick="ajouterTech()">+ Ajouter</button>
     <div class="m-actions"><button class="btn" onclick="fermerModal()">Fermer</button></div>`;
   ouvrirModal(h);
 };
 window.ajouterTech = () => { techniciens.push({nom:'Nouvelle attribution',couleur:PALETTES[techniciens.length%PALETTES.length]}); ouvrirConfigTech(); saveNow(); };
+window.supprimerTech = (i) => {
+  const nom = techniciens[i].nom;
+  const enUsage = projets.some(p => p.tech===nom || p.soustaches?.some(s=>s.tech===nom));
+  if (enUsage && !confirm(`"${nom}" est utilisée dans le planning. Supprimer quand même ?`)) return;
+  techniciens.splice(i,1);
+  ouvrirConfigTech(); renderAll(); saveNow();
+};
 window.updateTechNom = (i, val) => { const old = techniciens[i].nom; techniciens[i].nom = val; for (const p of projets) { if(p.tech===old)p.tech=val; p.soustaches?.forEach(s=>{if(s.tech===old)s.tech=val;}); } saveNow(); };
 window.updateTechCoul = (i, hex) => { techniciens[i].couleur=hex; document.querySelectorAll(`#cg${i} .swatch`).forEach(s=>s.classList.toggle('sel',s.dataset.hex===hex)); document.getElementById('dot'+i).style.background=hex; renderAll(); saveNow(); };
 
+const COLS_BUILTIN = new Set(['client','nom','debut','fin','tech','etat']);
 window.ouvrirConfigCols = () => {
-  let h = `<h3>Colonnes — visibilité &amp; largeur</h3>`;
+  let h = `<h3>Colonnes — visibilité &amp; largeur</h3>
+    <p style="font-size:.75rem;color:var(--gray-500);margin:-4px 0 8px">Faites glisser ⠿ pour réordonner les colonnes.</p>
+    <div id="cols-drag-list">`;
   colonnes.forEach((c, i) => {
-    const vis     = c.visible !== false;
-    const isNom   = c.key === 'nom';
+    const vis      = c.visible !== false;
+    const isNom    = c.key === 'nom';
     const isLocked = isNom || ((userRole === 'eco' || userRole === 'aseptic') && c.key === 'tech');
+    const isCustom = !COLS_BUILTIN.has(c.key);
     const lockTitle = isNom ? 'Colonne obligatoire' : isLocked ? 'Non disponible pour ce profil' : '';
-    h += `<div class="cfg-row" style="opacity:${vis?1:.45}">
+    h += `<div class="cfg-row col-drag-row" draggable="true" data-ci="${i}" style="opacity:${vis?1:.45};cursor:default">
+      <span class="col-drag-handle" title="Déplacer" style="cursor:grab;color:#cbd5e1;font-size:14px;flex-shrink:0;user-select:none;padding:0 2px">⠿</span>
       <label style="display:flex;align-items:center;gap:6px;cursor:${isLocked?'default':'pointer'};flex-shrink:0" title="${lockTitle}">
         <input type="checkbox" ${vis?'checked':''} ${isLocked?'disabled':''} onchange="toggleColVisible(${i},this.checked)" style="cursor:${isLocked?'default':'pointer'}">
       </label>
@@ -1400,25 +1428,75 @@ window.ouvrirConfigCols = () => {
       <input type="number" value="${c.width}" min="40" max="400" style="width:64px;margin-left:6px" onchange="updateColWidth(${i},this.value)" ${!vis?'disabled':''}>
       <span style="font-size:.75rem;color:var(--gray-500)">px</span>
       ${isLocked && c.key==='tech' ? `<span style="font-size:.7rem;color:#f97316;margin-left:4px">🔒</span>` : ''}
+      ${isCustom ? `<button onclick="supprimerCol(${i})" title="Supprimer cette colonne" style="background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:6px;padding:2px 7px;cursor:pointer;font-size:13px;flex-shrink:0;margin-left:4px">🗑</button>` : ''}
     </div>`;
   });
-  h += `<div class="m-actions"><button class="btn" onclick="fermerModal()">Fermer</button></div>`;
+  h += `</div>
+    <button class="btn btn-success" style="margin-top:12px" onclick="ajouterColonne()">+ Ajouter une colonne</button>
+    <div class="m-actions"><button class="btn" onclick="fermerModal()">Fermer</button></div>`;
   ouvrirModal(h);
+  _initColsDrag();
 };
+
+function _initColsDrag() {
+  const list = document.getElementById('cols-drag-list');
+  if (!list) return;
+  let dragSrc = null;
+
+  list.querySelectorAll('.col-drag-row').forEach(row => {
+    row.addEventListener('dragstart', e => {
+      dragSrc = row;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.dataset.ci);
+      setTimeout(() => row.classList.add('col-drag-ghost'), 0);
+    });
+    row.addEventListener('dragend', () => {
+      list.querySelectorAll('.col-drag-row').forEach(r => {
+        r.classList.remove('col-drag-ghost', 'col-drag-over');
+      });
+      dragSrc = null;
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      list.querySelectorAll('.col-drag-row').forEach(r => r.classList.remove('col-drag-over'));
+      if (row !== dragSrc) row.classList.add('col-drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('col-drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!dragSrc || dragSrc === row) return;
+      const from = +dragSrc.dataset.ci;
+      const to   = +row.dataset.ci;
+      const moved = colonnes.splice(from, 1)[0];
+      colonnes.splice(to, 0, moved);
+      renderAll(); saveNow(); ouvrirConfigCols();
+    });
+  });
+}
 window.toggleColVisible = (i, val) => {
-  /* ECO et ASEPTIC ne peuvent pas afficher la colonne Attribution */
   if ((userRole === 'eco' || userRole === 'aseptic') && colonnes[i].key === 'tech' && val) {
     toast('La colonne Attribution n\'est pas disponible pour ce profil', 'err');
-    ouvrirConfigCols(); // re-render la modale pour décocher la case
+    ouvrirConfigCols();
     return;
   }
   colonnes[i].visible = val;
-  renderAll();
-  saveNow();
-  ouvrirConfigCols();
+  renderAll(); saveNow(); ouvrirConfigCols();
 };
 window.updateColLabel = (i, val) => { colonnes[i].label = val; saveNow(); };
 window.updateColWidth = (i, val) => { colonnes[i].width = Math.max(40, +val||40); renderAll(); saveNow(); };
+window.ajouterColonne = () => {
+  const key = 'custom_' + Date.now();
+  colonnes.push({ key, label: 'Nouvelle colonne', width: 120, visible: true });
+  renderAll(); saveNow(); ouvrirConfigCols();
+};
+window.supprimerCol = (i) => {
+  if (!confirm(`Supprimer la colonne "${colonnes[i].label}" ? Les données saisies dans cette colonne seront perdues.`)) return;
+  const key = colonnes[i].key;
+  colonnes.splice(i, 1);
+  for (const p of projets) { delete p[key]; p.soustaches?.forEach(s => delete s[key]); }
+  renderAll(); saveNow(); ouvrirConfigCols();
+};
 
 /* ══════════════════════════════════════════════════════
    MODAL
