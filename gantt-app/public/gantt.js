@@ -1424,7 +1424,7 @@ window.ouvrirConfigCols = () => {
       <label style="display:flex;align-items:center;gap:6px;cursor:${isLocked?'default':'pointer'};flex-shrink:0" title="${lockTitle}">
         <input type="checkbox" ${vis?'checked':''} ${isLocked?'disabled':''} onchange="toggleColVisible(${i},this.checked)" style="cursor:${isLocked?'default':'pointer'}">
       </label>
-      <input type="text" value="${esc(c.label)}" style="flex:1;${!vis?'color:var(--gray-400)':''}" onchange="updateColLabel(${i},this.value)" ${isLocked||!vis?'disabled':''}>
+      <input type="text" value="${esc(c.label)}" style="flex:1;${!vis?'color:var(--gray-400)':''}" onchange="updateColLabel(${i},this.value)" ${!vis?'disabled':''}>
       <input type="number" value="${c.width}" min="40" max="400" style="width:64px;margin-left:6px" onchange="updateColWidth(${i},this.value)" ${!vis?'disabled':''}>
       <span style="font-size:.75rem;color:var(--gray-500)">px</span>
       ${isLocked && c.key==='tech' ? `<span style="font-size:.7rem;color:#f97316;margin-left:4px">🔒</span>` : ''}
