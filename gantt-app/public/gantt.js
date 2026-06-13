@@ -1175,39 +1175,51 @@ window.toggleCollapseAll = () => {
 };
 
 /* ── Statistiques ── */
-window.ouvrirStats = () => {
-  /* Tâches parentes uniquement */
-  const rows = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
+
+function _statsColsDisponibles() {
+  return [
+    { key: 'etat',   label: 'État',        color: '#64748b', fixed: true },
+    { key: 'client', label: colonnes.find(c=>c.key==='client')?.label || 'Association', color: '#0ea5e9', fixed: true },
+    { key: 'tech',   label: colonnes.find(c=>c.key==='tech')?.label   || 'Attribution', color: null,     fixed: true },
+    ...colonnes.filter(c => !COLS_BUILTIN.has(c.key) && c.visible !== false)
+               .map(c => ({ key: c.key, label: c.label, color: 'var(--navy)', fixed: false })),
+  ];
+}
+
+function _statsLoadConfig() {
+  try {
+    const raw = localStorage.getItem('stats_cols_' + projectId);
+    if (raw) return new Set(JSON.parse(raw));
+  } catch(e) {}
+  /* Par défaut : toutes les colonnes cochées */
+  return new Set(_statsColsDisponibles().map(c => c.key));
+}
+
+function _statsSaveConfig(keys) {
+  try { localStorage.setItem('stats_cols_' + projectId, JSON.stringify([...keys])); } catch(e) {}
+}
+
+window.ouvrirStats = () => { _renderStats(_statsLoadConfig()); };
+
+function _renderStats(selectedKeys) {
+  const allCols  = _statsColsDisponibles();
+  const active   = allCols.filter(c => selectedKeys.has(c.key));
+
+  /* Tâches parentes visibles */
+  const rows   = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
   const nbSubs = rows.reduce((s, p) => s + (p.soustaches?.length || 0), 0);
+  const total  = rows.length;
 
-  /* Colonnes personnalisées visibles */
-  const customCols = colonnes.filter(c => !COLS_BUILTIN.has(c.key) && c.visible !== false);
-
-  /* Colonnes fixes groupables */
-  const fixedCols = [
-    { key: 'client', label: colonnes.find(c=>c.key==='client')?.label || 'Association', color: '#0ea5e9' },
-    { key: 'tech',   label: colonnes.find(c=>c.key==='tech')?.label   || 'Attribution', color: null },
-  ];
-
-  /* Colonnes perso d'abord, puis fixes */
-  const groupCols = [
-    ...customCols.map(c => ({ key: c.key, label: c.label, color: 'var(--navy)' })),
-    ...fixedCols,
-  ];
-
-  /* Comptage simple : nb de tâches parentes par valeur de groupe */
-  const stateCount = {}; ETATS.forEach(e => stateCount[e] = 0);
-  const groupCount = {}; groupCols.forEach(c => groupCount[c.key] = {});
-
+  /* Comptage */
+  const counts = {};
+  active.forEach(c => counts[c.key] = {});
   rows.forEach(p => {
-    stateCount[p.etat] = (stateCount[p.etat]||0) + 1;
-    groupCols.forEach(c => {
-      const val = p[c.key]; if (!val) return;
-      groupCount[c.key][val] = (groupCount[c.key][val]||0) + 1;
+    active.forEach(c => {
+      const val = c.key === 'etat' ? (p.etat || 'À venir') : p[c.key];
+      if (!val) return;
+      counts[c.key][val] = (counts[c.key][val]||0) + 1;
     });
   });
-
-  const total = rows.length;
 
   const bar = (cnt, col, ref) => {
     const pct = ref ? Math.round(cnt/ref*100) : 0;
@@ -1215,77 +1227,86 @@ window.ouvrirStats = () => {
       <div style="height:100%;width:${pct}%;background:${col};border-radius:4px;transition:width .4s"></div></div>`;
   };
   const statRow = (label, cnt, col, ref) =>
-    `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    `<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
       <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
       <span style="width:130px;font-size:.8rem;color:var(--gray-700);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(label)}">${esc(label)}</span>
       ${bar(cnt, col, ref)}
-      <span style="font-size:.82rem;font-weight:700;color:var(--gray-700);min-width:22px;text-align:right">${cnt}</span>
-      <span style="font-size:.72rem;color:var(--gray-400);min-width:32px">${ref?Math.round(cnt/ref*100):0}%</span>
+      <span style="font-size:.82rem;font-weight:700;color:var(--gray-700);min-width:24px;text-align:right">${cnt}</span>
+      <span style="font-size:.72rem;color:var(--gray-400);min-width:34px;text-align:right">${ref?Math.round(cnt/ref*100):0}%</span>
     </div>`;
 
-  /* Premier onglet = première colonne perso si elle existe, sinon état */
-  const firstTab = groupCols.length ? 'g_'+groupCols[0].key : 'état';
-  const tabs = [
-    ...groupCols.map(c => ({ id: 'g_'+c.key, label: 'Par '+c.label.toLowerCase() })),
-    { id: 'état', label: 'Par état' },
-    ...fixedCols.filter(c => !groupCols.find(g=>g.key===c.key) /* évite doublon */).map(c => ({ id: 'g_'+c.key, label: 'Par '+c.label.toLowerCase() })),
-  ];
-  /* Dédoublonnage (fixedCols déjà inclus dans groupCols) */
-  const tabsSeen = new Set(); const tabsUniq = tabs.filter(t => { if(tabsSeen.has(t.id)) return false; tabsSeen.add(t.id); return true; });
+  /* ── Configurateur colonnes ── */
+  let h = `<h3 style="margin-bottom:10px">📈 Statistiques</h3>`;
 
-  let h = `<h3 style="margin-bottom:14px">📈 Statistiques</h3>
-  <div style="display:flex;gap:10px;margin-bottom:4px">
-    <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
-      <div style="font-size:1.4rem;font-weight:700;color:var(--navy)">${total}</div>
-      <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Tâches</div>
-    </div>
-    <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
-      <div style="font-size:1.4rem;font-weight:700;color:#0ea5e9">${nbSubs}</div>
-      <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Sous-tâches</div>
-    </div>
-    <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
-      <div style="font-size:1.4rem;font-weight:700;color:var(--gray-700)">${total+nbSubs}</div>
-      <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Total</div>
+  /* Sélecteur de colonnes */
+  h += `<div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:10px 12px;margin-bottom:12px">
+    <div style="font-size:.72rem;font-weight:700;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Colonnes à analyser</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px" id="stats-col-sel">`;
+  allCols.forEach(c => {
+    const checked = selectedKeys.has(c.key);
+    h += `<label style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;border:1.5px solid ${checked?'var(--blue)':'var(--gray-200)'};background:${checked?'#eff6ff':'white'};cursor:pointer;font-size:.78rem;font-weight:600;color:${checked?'var(--blue)':'var(--gray-500)'};transition:all .15s;user-select:none">
+      <input type="checkbox" ${checked?'checked':''} data-key="${c.key}" onchange="statsToggleCol('${c.key}',this.checked)" style="display:none">
+      ${esc(c.label)}
+    </label>`;
+  });
+  h += `</div>
+    <div style="display:flex;justify-content:flex-end;margin-top:8px;gap:6px">
+      <button class="btn" style="font-size:.75rem;padding:4px 10px" onclick="statsToutCocher(true)">Tout</button>
+      <button class="btn" style="font-size:.75rem;padding:4px 10px" onclick="statsToutCocher(false)">Aucun</button>
+      <button class="btn btn-success" style="font-size:.75rem;padding:4px 10px" onclick="statsSauver()">💾 Sauvegarder</button>
     </div>
   </div>`;
 
-  /* Onglets */
-  h += `<div id="stats-tabs" style="display:flex;gap:0;flex-wrap:wrap;margin:14px 0 12px;border-bottom:2px solid var(--gray-200)">
-    ${tabsUniq.map(t =>
-      `<button onclick="statsTab('${t.id}')" id="stab-${t.id}" style="padding:5px 11px;font-size:.76rem;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid ${t.id===firstTab?'var(--blue)':'transparent'};margin-bottom:-2px;color:${t.id===firstTab?'var(--blue)':'var(--gray-500)'};font-family:inherit;white-space:nowrap">${t.label}</button>`
-    ).join('')}
-  </div>
-  <div id="stats-content">`;
+  /* ── Résumé ── */
+  h += `<div style="display:flex;gap:8px;margin-bottom:12px">
+    <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:8px 12px;text-align:center;border:1px solid var(--gray-200)">
+      <div style="font-size:1.3rem;font-weight:700;color:var(--navy)">${total}</div>
+      <div style="font-size:.7rem;color:var(--gray-500);margin-top:1px">Tâches</div>
+    </div>
+    <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:8px 12px;text-align:center;border:1px solid var(--gray-200)">
+      <div style="font-size:1.3rem;font-weight:700;color:#0ea5e9">${nbSubs}</div>
+      <div style="font-size:.7rem;color:var(--gray-500);margin-top:1px">Sous-tâches</div>
+    </div>
+    <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:8px 12px;text-align:center;border:1px solid var(--gray-200)">
+      <div style="font-size:1.3rem;font-weight:700;color:var(--gray-700)">${total+nbSubs}</div>
+      <div style="font-size:.7rem;color:var(--gray-500);margin-top:1px">Total</div>
+    </div>
+  </div>`;
 
-  /* Panneau état */
-  h += `<div id="sp-état" style="display:${firstTab==='état'?'':'none'}">`;
-  const stateMax = Math.max(1, ...ETATS.map(e => stateCount[e]||0));
-  for (const e of ETATS) {
-    const cnt = stateCount[e]||0;
-    h += statRow(e, cnt, etatColor(e), stateMax);
-  }
-  h += `</div>`;
+  /* ── Onglets ── */
+  if (active.length === 0) {
+    h += `<p style="color:var(--gray-400);font-size:.85rem;text-align:center;padding:16px 0">Sélectionnez au moins une colonne ci-dessus.</p>`;
+  } else {
+    const firstId = active[0].key;
+    h += `<div id="stats-tabs" style="display:flex;gap:0;flex-wrap:wrap;border-bottom:2px solid var(--gray-200);margin-bottom:12px">
+      ${active.map(c =>
+        `<button onclick="statsTab('${c.key}')" id="stab-${c.key}" style="padding:5px 11px;font-size:.76rem;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid ${c.key===firstId?'var(--blue)':'transparent'};margin-bottom:-2px;color:${c.key===firstId?'var(--blue)':'var(--gray-500)'};font-family:inherit;white-space:nowrap">${esc(c.label)}</button>`
+      ).join('')}
+    </div>
+    <div id="stats-content">`;
 
-  /* Panneaux colonnes groupables */
-  groupCols.forEach(c => {
-    const entries = Object.entries(groupCount[c.key]).sort((a,b) => b[1]-a[1]);
-    const max = entries[0]?.[1] || 1;
-    const isFirst = firstTab === 'g_'+c.key;
-    h += `<div id="sp-g_${c.key}" style="display:${isFirst?'':'none'}">`;
-    if (entries.length) {
-      entries.forEach(([val, cnt]) => {
-        const col = c.key === 'tech' ? getTechColor(val) : (c.color || 'var(--navy)');
-        h += statRow(val, cnt, col, max);
-      });
-    } else {
-      h += `<p style="color:var(--gray-400);font-size:.82rem">Aucune donnée</p>`;
-    }
+    active.forEach((c, idx) => {
+      const entries = Object.entries(counts[c.key]).sort((a,b) => b[1]-a[1]);
+      const max = entries[0]?.[1] || 1;
+      h += `<div id="sp-${c.key}" style="display:${idx===0?'':'none'}">`;
+      if (entries.length) {
+        entries.forEach(([val, cnt]) => {
+          let col = c.color || 'var(--navy)';
+          if (c.key === 'tech') col = getTechColor(val);
+          if (c.key === 'etat') col = etatColor(val);
+          h += statRow(val, cnt, col, max);
+        });
+      } else {
+        h += `<p style="color:var(--gray-400);font-size:.82rem">Aucune donnée</p>`;
+      }
+      h += `</div>`;
+    });
     h += `</div>`;
-  });
+  }
 
-  h += `</div><div class="m-actions"><button class="btn btn-primary" onclick="fermerModal()">Fermer</button></div>`;
+  h += `<div class="m-actions"><button class="btn btn-primary" onclick="fermerModal()">Fermer</button></div>`;
   ouvrirModal(h);
-};
+}
 
 window.statsTab = (key) => {
   document.querySelectorAll('#stats-tabs button').forEach(btn => {
@@ -1296,6 +1317,26 @@ window.statsTab = (key) => {
   document.querySelectorAll('#stats-content > div').forEach(pane => {
     pane.style.display = pane.id === 'sp-' + key ? '' : 'none';
   });
+};
+
+window.statsToggleCol = (key, checked) => {
+  const sel = _statsLoadConfig();
+  checked ? sel.add(key) : sel.delete(key);
+  _renderStats(sel);
+};
+
+window.statsToutCocher = (all) => {
+  const sel = all ? new Set(_statsColsDisponibles().map(c => c.key)) : new Set();
+  _renderStats(sel);
+};
+
+window.statsSauver = () => {
+  const sel = new Set();
+  document.querySelectorAll('#stats-col-sel input[type=checkbox]').forEach(cb => {
+    if (cb.checked) sel.add(cb.dataset.key);
+  });
+  _statsSaveConfig(sel);
+  toast('✓ Configuration des stats sauvegardée', 'ok');
 };
 
 /* ══════════════════════════════════════════════════════
