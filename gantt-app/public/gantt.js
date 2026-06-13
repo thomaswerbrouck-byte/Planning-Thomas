@@ -919,10 +919,12 @@ window.ajouterSoustache = parentId => {
   pushUndo();
   const p = projets.find(x => x.id === parentId); if (!p) return;
   if (!p.soustaches) p.soustaches = [];
+  const customVals = {};
+  colonnes.filter(c => !COLS_BUILTIN.has(c.key)).forEach(c => { customVals[c.key] = p[c.key] ?? ''; });
   p.soustaches.push({
     id: 'st_'+Date.now(), nom: 'Nouvelle sous-tâche',
     client: p.client, debut: p.debut, fin: p.fin,
-    tech: p.tech, etat: 'À venir'
+    tech: p.tech, etat: 'À venir', ...customVals
   });
   collapsed[parentId] = false;
   renderAll(); scheduleSave();
