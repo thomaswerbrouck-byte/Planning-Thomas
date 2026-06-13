@@ -1206,9 +1206,14 @@ function _renderStats(selectedKeys) {
   const active   = allCols.filter(c => selectedKeys.has(c.key));
 
   /* Tâches parentes visibles */
-  const rows   = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
-  const nbSubs = rows.reduce((s, p) => s + (p.soustaches?.length || 0), 0);
-  const total  = rows.length;
+  const allRows = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
+  const nbSubs  = allRows.reduce((s, p) => s + (p.soustaches?.length || 0), 0);
+
+  /* Colonne personnalisée principale (ex: "Opérations") = filtre de base */
+  const primaryCustom = colonnes.find(c => !COLS_BUILTIN.has(c.key) && c.visible !== false);
+  /* On ne compte que les tâches ayant une valeur dans cette colonne */
+  const rows  = primaryCustom ? allRows.filter(p => p[primaryCustom.key]) : allRows;
+  const total = rows.length;
 
   /* Comptage */
   const counts = {};
