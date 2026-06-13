@@ -1176,34 +1176,48 @@ window.toggleCollapseAll = () => {
 
 /* ── Statistiques ── */
 window.ouvrirStats = () => {
-  /* Compter TOUTES les tâches et sous-tâches, qu'elles soient repliées ou non */
+  /* Toutes les tâches et sous-tâches visibles */
   const allTasks = [];
   for (const p of projets) {
     if (!matchFiltres(p) && !p.soustaches?.some(s => matchFiltres(s))) continue;
     allTasks.push(p);
     for (const s of (p.soustaches || [])) allTasks.push(s);
   }
-  const rows  = allTasks;
-  const total = rows.length;
+  const total   = allTasks.length;
   const parents = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
-  const subs    = rows.filter(t => t.id?.startsWith('st_'));
+  const subs    = allTasks.filter(t => t.id?.startsWith('st_'));
 
-  const byState = {};
-  ETATS.forEach(e => byState[e] = 0);
-  rows.forEach(t => { byState[t.etat] = (byState[t.etat]||0) + 1; });
+  /* Regroupements */
+  const byState  = {}; ETATS.forEach(e => byState[e] = 0);
+  const byNom    = {}, byClient = {}, byTech = {};
+  allTasks.forEach(t => {
+    byState[t.etat]  = (byState[t.etat]||0) + 1;
+    if (t.nom)    byNom[t.nom]       = (byNom[t.nom]||0) + 1;
+    if (t.client) byClient[t.client] = (byClient[t.client]||0) + 1;
+    if (t.tech)   byTech[t.tech]     = (byTech[t.tech]||0) + 1;
+  });
+  const nomEntries    = Object.entries(byNom).sort((a,b) => b[1]-a[1]);
+  const clientEntries = Object.entries(byClient).sort((a,b) => b[1]-a[1]);
+  const techEntries   = Object.entries(byTech).sort((a,b) => b[1]-a[1]);
 
-  const byTech = {};
-  rows.forEach(t => { if (t.tech) byTech[t.tech] = (byTech[t.tech]||0) + 1; });
-  const techEntries = Object.entries(byTech).sort((a,b) => b[1]-a[1]);
-
-  const bar = (cnt, col) => {
-    const pct = total ? Math.round(cnt/total*100) : 0;
+  const bar = (cnt, col, ref) => {
+    const pct = ref ? Math.round(cnt/ref*100) : 0;
     return `<div style="flex:1;height:7px;background:var(--gray-100);border-radius:4px;overflow:hidden">
       <div style="height:100%;width:${pct}%;background:${col};border-radius:4px;transition:width .4s"></div></div>`;
   };
+  const sectionTitle = txt =>
+    `<div style="font-size:.72rem;font-weight:700;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;margin:16px 0 8px">${txt}</div>`;
+  const statRow = (label, cnt, col, ref, dotColor) =>
+    `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="width:8px;height:8px;border-radius:50%;background:${dotColor||col};flex-shrink:0"></span>
+      <span style="width:130px;font-size:.8rem;color:var(--gray-700);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(label)}">${esc(label)}</span>
+      ${bar(cnt, col, ref)}
+      <span style="font-size:.82rem;font-weight:700;color:var(--gray-700);min-width:22px;text-align:right">${cnt}</span>
+      <span style="font-size:.72rem;color:var(--gray-400);min-width:32px">${ref?Math.round(cnt/ref*100):0}%</span>
+    </div>`;
 
   let h = `<h3 style="margin-bottom:14px">📈 Statistiques</h3>
-  <div style="display:flex;gap:10px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;margin-bottom:4px">
     <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:10px 14px;text-align:center;border:1px solid var(--gray-200)">
       <div style="font-size:1.4rem;font-weight:700;color:var(--navy)">${parents.length}</div>
       <div style="font-size:.72rem;color:var(--gray-500);margin-top:2px">Opérations</div>
@@ -1218,37 +1232,58 @@ window.ouvrirStats = () => {
     </div>
   </div>`;
 
-  h += `<div style="font-size:.72rem;font-weight:700;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Par état</div>`;
+  /* ── Onglets ── */
+  h += `<div id="stats-tabs" style="display:flex;gap:4px;margin:14px 0 12px;border-bottom:2px solid var(--gray-200)">
+    ${[['état','Par état'],['oper','Par opération'],['assoc','Par association'],['tech','Par attribution']].map(([k,l],i) =>
+      `<button onclick="statsTab('${k}')" id="stab-${k}" style="padding:5px 12px;font-size:.78rem;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid ${i===0?'var(--blue)':'transparent'};margin-bottom:-2px;color:${i===0?'var(--blue)':'var(--gray-500)'};font-family:inherit">${l}</button>`
+    ).join('')}
+  </div>
+  <div id="stats-content">`;
+
+  /* Panneau état */
+  h += `<div id="sp-état">`;
   for (const e of ETATS) {
     const cnt = byState[e]||0;
-    const col = etatColor(e);
-    const pct = total ? Math.round(cnt/total*100) : 0;
-    h += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
-      <span style="width:95px;font-size:.8rem;color:var(--gray-700);flex-shrink:0">${e}</span>
-      ${bar(cnt, col)}
-      <span style="font-size:.82rem;font-weight:700;color:var(--gray-700);min-width:22px;text-align:right">${cnt}</span>
-      <span style="font-size:.72rem;color:var(--gray-400);min-width:32px">${pct}%</span>
-    </div>`;
+    h += statRow(e, cnt, etatColor(e), total);
   }
+  h += `</div>`;
 
+  /* Panneau opérations */
+  h += `<div id="sp-oper" style="display:none">`;
+  if (nomEntries.length) {
+    const max = nomEntries[0][1];
+    nomEntries.forEach(([nom, cnt]) => { h += statRow(nom, cnt, 'var(--navy)', max, 'var(--navy)'); });
+  } else h += `<p style="color:var(--gray-400);font-size:.82rem">Aucune donnée</p>`;
+  h += `</div>`;
+
+  /* Panneau associations */
+  h += `<div id="sp-assoc" style="display:none">`;
+  if (clientEntries.length) {
+    const max = clientEntries[0][1];
+    clientEntries.forEach(([cl, cnt]) => { h += statRow(cl, cnt, '#0ea5e9', max, '#0ea5e9'); });
+  } else h += `<p style="color:var(--gray-400);font-size:.82rem">Aucune donnée</p>`;
+  h += `</div>`;
+
+  /* Panneau attributions */
+  h += `<div id="sp-tech" style="display:none">`;
   if (techEntries.length) {
-    h += `<div style="font-size:.72rem;font-weight:700;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;margin:14px 0 8px">Par attribution</div>`;
-    for (const [tech, cnt] of techEntries) {
-      const col = getTechColor(tech);
-      const pct = total ? Math.round(cnt/total*100) : 0;
-      h += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
-        <span style="width:95px;font-size:.8rem;color:var(--gray-700);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(tech)}</span>
-        ${bar(cnt, col)}
-        <span style="font-size:.82rem;font-weight:700;color:var(--gray-700);min-width:22px;text-align:right">${cnt}</span>
-        <span style="font-size:.72rem;color:var(--gray-400);min-width:32px">${pct}%</span>
-      </div>`;
-    }
-  }
+    const max = techEntries[0][1];
+    techEntries.forEach(([tech, cnt]) => { h += statRow(tech, cnt, getTechColor(tech), max); });
+  } else h += `<p style="color:var(--gray-400);font-size:.82rem">Aucune donnée</p>`;
+  h += `</div>`;
 
-  h += `<div class="m-actions"><button class="btn btn-primary" onclick="fermerModal()">Fermer</button></div>`;
+  h += `</div><div class="m-actions"><button class="btn btn-primary" onclick="fermerModal()">Fermer</button></div>`;
   ouvrirModal(h);
+};
+
+window.statsTab = (key) => {
+  ['état','oper','assoc','tech'].forEach(k => {
+    const tab  = document.getElementById('stab-'+k);
+    const pane = document.getElementById('sp-'+k);
+    const active = k === key;
+    if (tab)  { tab.style.borderBottomColor = active ? 'var(--blue)' : 'transparent'; tab.style.color = active ? 'var(--blue)' : 'var(--gray-500)'; }
+    if (pane) pane.style.display = active ? '' : 'none';
+  });
 };
 
 /* ══════════════════════════════════════════════════════
