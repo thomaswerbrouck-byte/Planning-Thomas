@@ -8,6 +8,18 @@
 </head>
 <body>
 
+<!-- ── Loading ── -->
+<div id="loading-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 60%,#1d4ed8 100%);display:none;flex-direction:column;align-items:center;justify-content:center;gap:24px">
+  <div style="font-size:3rem;animation:spin 1.2s linear infinite">📅</div>
+  <div style="color:white;font-size:1.15rem;font-weight:700;letter-spacing:.05em">Chargement du planning…</div>
+  <div style="display:flex;gap:8px">
+    <div class="ld-dot" style="animation-delay:0s"></div>
+    <div class="ld-dot" style="animation-delay:.2s"></div>
+    <div class="ld-dot" style="animation-delay:.4s"></div>
+  </div>
+  <div id="loading-sub" style="color:rgba(255,255,255,.5);font-size:.8rem;margin-top:-8px">Connexion au serveur…</div>
+</div>
+
 <!-- ── Login ── -->
 <div id="login-overlay">
   <div class="login-card">
@@ -207,19 +219,17 @@
     badge.className   = role;
     badge.style.display = '';
 
-    /* Pour les profils restreints : masquer le contenu Gantt pendant le chargement
-       afin d'éviter de voir des données non filtrées */
-    const appMain = document.querySelector('.app-main');
-    if (role === 'eco' || role === 'aseptic') {
-      appMain.style.visibility = 'hidden';
-    }
-
     overlay.style.display = 'none';
+
+    /* Afficher l'écran de chargement */
+    const loader = document.getElementById('loading-overlay');
+    loader.classList.add('show');
+    document.getElementById('loading-sub').textContent = 'Récupération des données…';
 
     await startApp(p);
 
-    /* Révéler le contenu une fois les données chargées et filtrées */
-    appMain.style.visibility = '';
+    /* Cacher le loader une fois prêt */
+    loader.classList.remove('show');
   }
 
   async function startApp(pseudo) {
@@ -506,16 +516,31 @@
   window._getCurrentId = () => window._currentProjectId;
 
   window.deconnecter = () => {
+    /* Réinitialiser le rôle et l'interface */
     document.body.classList.remove('read-only', 'role-eco');
-    document.getElementById('role-badge').style.display = 'none';
-    document.getElementById('pseudo-input').value = '';
-    document.getElementById('pwd-wrap').style.display = 'none';
-    document.getElementById('pwd-input').value = '';
-    document.getElementById('btn-join').textContent = 'Rejoindre →';
-    document.getElementById('login-hint').textContent = 'Choisissez votre nom';
-    document.getElementById('login-overlay').style.display = '';
     window._userRole = 'viewer';
-    window._pseudo = '';
+    window._pseudo   = '';
+
+    /* Remettre le formulaire de connexion à zéro */
+    document.getElementById('pseudo-input').value        = '';
+    document.getElementById('pwd-wrap').style.display    = 'none';
+    document.getElementById('pwd-input').value           = '';
+    document.getElementById('btn-join').textContent      = 'Rejoindre →';
+    document.getElementById('login-hint').textContent    = 'Choisissez votre nom';
+
+    /* Masquer badge, users bar, titre */
+    document.getElementById('role-badge').style.display  = 'none';
+    document.getElementById('users-label').textContent   = '0 connecté';
+    document.getElementById('users-dots').innerHTML      = '';
+    document.getElementById('project-title').textContent = 'Planning';
+    document.getElementById('toolbar').innerHTML         = '';
+    document.getElementById('gantt-inner').innerHTML     = '';
+
+    /* Déconnecter le WebSocket */
+    try { window.ganttSocket?.socket?.disconnect(); } catch(e) {}
+
+    /* Afficher l'écran de connexion */
+    document.getElementById('login-overlay').style.display = '';
   };
 
   function toast(msg, type = '') {
