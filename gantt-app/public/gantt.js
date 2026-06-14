@@ -1985,13 +1985,18 @@ function _buildPrintWindow(d, f, ji, fmt = 'A4') {
   const DWLET = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
   const MNOMS = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
   const ordered = projFiltresTries(), total = ji.length;
-  const WP = total<=31?11:total<=62?9:total<=93?8:total<=186?7:6;
   const idxDeb = idxDate(d), idxFin = idxDate(f);
-  const vcols = visibleCols();
-  const fW = frozenW(), totalW = fW + total*WP;
+  const vcols  = visibleCols();
+  const fW     = frozenW();
   /* A4 paysage ≈ 1070px utiles, A3 paysage ≈ 1540px utiles (après marges) */
-  const pageW = fmt === 'A3' ? 1540 : 1070;
-  const zoom  = Math.min(1, Math.floor((pageW/totalW)*1000)/1000);
+  const pageW  = fmt === 'A3' ? 1540 : 1070;
+  /* WP calculé pour remplir exactement la largeur disponible */
+  const availW = Math.max(total * 3, pageW - fW);
+  const WP     = Math.max(3, Math.floor(availW / total));
+  const totalW = fW + total * WP;
+  const zoom   = Math.min(1, Math.floor((pageW / totalW) * 1000) / 1000);
+  /* Index de la colonne "aujourd'hui" dans la plage imprimée */
+  const todayPrintIdx = ji.findIndex(j => j.clef === todayStr);
 
   let mG=[],curM=-1,cnt=0;
   for(const j of ji){if(j.moisIdx!==curM){if(cnt)mG.push({nom:MNOMS[curM],moisIdx:curM,count:cnt});curM=j.moisIdx;cnt=1;}else cnt++;}
@@ -2017,22 +2022,28 @@ function _buildPrintWindow(d, f, ji, fmt = 'A4') {
   ph+=`</tr><tr style="height:9px">`;
   for(const sg of sG) ph+=`<td colspan="${sg.count}" style="text-align:center;font-size:6px;color:#64748b;border:0.5px solid #e2e8f0;background:#fafafa;padding:0">${sg.count*WP>=14?'S'+sg.sem:''}</td>`;
   ph+=`</tr><tr style="height:11px">`;
-  for(const j of ji){const bg=j.wk?'#eef2ff':'white',fc=j.wk?'#818cf8':'#475569';ph+=`<td style="background:${bg};color:${fc};font-size:${WP>=9?6.5:5.5}px;text-align:center;border:0.5px solid #e2e8f0;border-bottom:1px solid #94a3b8;padding:0;line-height:1.1;vertical-align:middle">${WP>=8?`<div style="font-size:5px">${DWLET[j.dw]}</div>`:''}<div style="font-weight:700">${j.num}</div></td>`;}
+  for(const j of ji){
+    const isToday = j.clef === todayStr;
+    const bg = isToday ? '#fef08a' : j.wk ? '#eef2ff' : 'white';
+    const fc = isToday ? '#92400e' : j.wk ? '#818cf8' : '#475569';
+    const bdr = isToday ? 'border-left:1.5px solid #fbbf24;border-right:1.5px solid #fbbf24;' : '';
+    ph+=`<td style="background:${bg};color:${fc};font-size:${WP>=9?6.5:5.5}px;text-align:center;border:0.5px solid #e2e8f0;border-bottom:1px solid #94a3b8;${bdr}padding:0;line-height:1.1;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact">${WP>=8?`<div style="font-size:5px">${DWLET[j.dw]}</div>`:''}<div style="font-weight:${isToday?800:700}">${j.num}</div></td>`;
+  }
   ph+=`</tr></thead><tbody>`;
   /* N'imprimer que les tâches dont la période chevauche la plage sélectionnée */
   const chevauchePeriode = t => t.debut <= f && t.fin >= d;
   for(const p of ordered){
     if(!chevauchePeriode(p)) continue;
-    ph+=_printRow(p,ji,total,WP,idxDeb,idxFin,false,vcols);
+    ph+=_printRow(p,ji,total,WP,idxDeb,idxFin,false,vcols,todayPrintIdx);
     if(p.soustaches?.length&&!collapsed[p.id])
       for(const s of soustachesTries(p))
-        if(chevauchePeriode(s)) ph+=_printRow(s,ji,total,WP,idxDeb,idxFin,true,vcols);
+        if(chevauchePeriode(s)) ph+=_printRow(s,ji,total,WP,idxDeb,idxFin,true,vcols,todayPrintIdx);
   }
   ph+=`</tbody></table></div><div style="font-size:7px;color:#94a3b8;text-align:right;padding:3px 0;border-top:0.5px solid #e2e8f0;margin-top:3px">Planning — Édité le ${new Date().toLocaleDateString('fr-FR')}</div></body></html>`;
   win.document.write(ph); win.document.close(); return win;
 }
 
-function _printRow(p, ji, total, WP, idxDeb, idxFin, isSub, vcols) {
+function _printRow(p, ji, total, WP, idxDeb, idxFin, isSub, vcols, todayPrintIdx = -1) {
   const col = getTechColor(p.tech), ec = etatColor(p.etat);
   const rowH = isSub?15:19, barTop=isSub?3:4, barH=isSub?9:11;
   let h = `<tr style="height:${rowH}px">`;
@@ -2051,7 +2062,13 @@ function _printRow(p, ji, total, WP, idxDeb, idxFin, isSub, vcols) {
   }
   h+=`<td colspan="${total}" style="position:relative;padding:0;height:${rowH}px;border-bottom:0.5px solid #e2e8f0;overflow:visible;background:white">`;
   let gOff=0;
-  for(const j of ji){h+=`<div style="position:absolute;top:0;bottom:0;left:${gOff*WP}px;width:${WP}px;background:${j.wk?'#eef2ff':'white'}"></div>`;gOff++;}
+  for(const j of ji){
+    const isToday = j.clef === todayStr;
+    const bg = isToday ? 'rgba(254,240,138,.55)' : j.wk ? '#eef2ff' : 'white';
+    const bdr = isToday ? 'border-left:1.5px solid #fbbf24;border-right:1.5px solid #fbbf24;' : '';
+    h+=`<div style="position:absolute;top:0;bottom:0;left:${gOff*WP}px;width:${WP}px;background:${bg};${bdr}-webkit-print-color-adjust:exact;print-color-adjust:exact"></div>`;
+    gOff++;
+  }
   const pD=idxDate(p.debut),pF=idxDate(p.fin);
   const bSR=Math.max(0,pD-idxDeb),bER=Math.min(total-1,pF-idxDeb);
   if(bSR<=bER&&pF>=idxDeb&&pD<=idxFin){
