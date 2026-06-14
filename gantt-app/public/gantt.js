@@ -1822,6 +1822,23 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     if (userRole === 'admin') { e.preventDefault(); saveNow(); toast('✓ Sauvegardé', 'ok'); }
   }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+    e.preventDefault();
+    /* Utiliser la plage visible actuelle comme valeur par défaut */
+    if (jours.length) {
+      const d = jours[0].clef, f = jours[jours.length-1].clef;
+      /* Pré-remplir les champs et ouvrir la modale */
+      ouvrirExportPDF();
+      setTimeout(() => {
+        const dEl = document.getElementById('pdfD');
+        const fEl = document.getElementById('pdfF');
+        if (dEl) dEl.value = d;
+        if (fEl) fEl.value = f;
+      }, 50);
+    } else {
+      ouvrirExportPDF();
+    }
+  }
 });
 
 /* ══════════════════════════════════════════════════════
