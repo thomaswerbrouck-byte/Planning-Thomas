@@ -137,7 +137,16 @@ var ganttApp = {
     projets = (data.tasks || []).map(normalizeTask);
 
     /* ── Migration : ancienne colonne perso "opérations" → clé native "operation" ── */
-    _migrateOperationCol();
+    const migrated = _migrateOperationCol();
+
+    /* ── Garantie : la colonne native "operation" est toujours présente dans colonnes ── */
+    if (!colonnes.find(c => c.key === 'operation')) {
+      const idxEtat = colonnes.findIndex(c => c.key === 'etat');
+      colonnes.splice(idxEtat >= 0 ? idxEtat : colonnes.length, 0,
+        { key: 'operation', label: 'Opérations', width: 130, visible: true });
+      migrated || saveNow(); // sauvegarder si la migration n'a pas déjà déclenché une sauvegarde
+    }
+    if (migrated) saveNow();
 
     initAnneeSelect();
     initJours();
@@ -1584,7 +1593,7 @@ function _migrateOperationCol() {
     !['client','nom','operation','debut','fin','tech','etat'].includes(c.key) &&
     c.label.toLowerCase().replace(/s$/,'').normalize('NFD').replace(/\p{Diacritic}/gu,'') === 'operation'
   );
-  if (!oldCol) return; // rien à migrer
+  if (!oldCol) return false; // rien à migrer
 
   const oldKey = oldCol.key;
 
@@ -1607,6 +1616,7 @@ function _migrateOperationCol() {
     const pos = idxEtat >= 0 ? idxEtat : colonnes.length;
     colonnes.splice(pos, 0, { key: 'operation', label: oldCol.label, width: oldCol.width || 130, visible: oldCol.visible !== false });
   }
+  return true;
 }
 window.ouvrirConfigCols = () => {
   let h = `<h3>Colonnes — visibilité &amp; largeur</h3>
