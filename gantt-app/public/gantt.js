@@ -1987,14 +1987,26 @@ function _buildPrintWindow(d, f, ji, fmt = 'A4') {
   const ordered = projFiltresTries(), total = ji.length;
   const idxDeb = idxDate(d), idxFin = idxDate(f);
   const vcols  = visibleCols();
-  const fW     = frozenW();
   /* A4 paysage ≈ 1070px utiles, A3 paysage ≈ 1540px utiles (après marges) */
   const pageW  = fmt === 'A3' ? 1540 : 1070;
-  /* WP calculé pour remplir exactement la largeur disponible */
-  const availW = Math.max(total * 3, pageW - fW);
-  const WP     = Math.max(3, Math.floor(availW / total));
+
+  /* Largeurs optimisées pour l'impression :
+     les colonnes ne doivent pas dépasser 38% de la page.
+     On réduit proportionnellement si nécessaire, avec des minimums par colonne. */
+  const PRINT_MIN = { nom:60, client:45, operation:50, tech:45, etat:28, debut:28, fin:28 };
+  const maxColsW  = Math.floor(pageW * 0.38);
+  const rawFW     = vcols.reduce((s, c) => s + c.width, 0);
+  const colScale  = rawFW > maxColsW ? maxColsW / rawFW : 1;
+  const printCols = vcols.map(c => ({
+    ...c,
+    printW: Math.max(PRINT_MIN[c.key] ?? 30, Math.floor(c.width * colScale))
+  }));
+  const fW     = printCols.reduce((s, c) => s + c.printW, 0);
+
+  /* WP calculé pour que le Gantt occupe le reste de la page */
+  const WP     = Math.max(3, Math.floor((pageW - fW) / total));
   const totalW = fW + total * WP;
-  const zoom   = Math.min(1, Math.floor((pageW / totalW) * 1000) / 1000);
+  const zoom   = Math.min(1, pageW / totalW);
   /* Index de la colonne "aujourd'hui" dans la plage imprimée */
   const todayPrintIdx = ji.findIndex(j => j.clef === todayStr);
 
@@ -2014,10 +2026,10 @@ function _buildPrintWindow(d, f, ji, fmt = 'A4') {
     <div style="font-size:8.5px;color:#64748b;margin-top:2px">Période : ${d.split('-').reverse().join('/')} → ${f.split('-').reverse().join('/')} &nbsp;|&nbsp; ${total} jours &nbsp;|&nbsp; ${ordered.length} opération${ordered.length>1?'s':''}</div></div>
     <div style="font-size:8px;color:#94a3b8">Édité le ${new Date().toLocaleDateString('fr-FR')}</div></div>`;
   ph += `<div style="zoom:${zoom};transform-origin:top left"><table style="width:${totalW}px"><colgroup>`;
-  for(const c of vcols) ph+=`<col style="width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`;
+  for(const c of printCols) ph+=`<col style="width:${c.printW}px;min-width:${c.printW}px;max-width:${c.printW}px">`;
   for(let i=0;i<total;i++) ph+=`<col style="width:${WP}px;min-width:${WP}px;max-width:${WP}px">`;
   ph+=`</colgroup><thead><tr style="height:13px">`;
-  for(const c of vcols) ph+=`<td rowspan="3" class="thf" style="vertical-align:middle;width:${c.width}px">${esc(c.label)}</td>`;
+  for(const c of printCols) ph+=`<td rowspan="3" class="thf" style="vertical-align:middle;width:${c.printW}px">${esc(c.label)}</td>`;
   for(const mg of mG) ph+=`<td colspan="${mg.count}" style="text-align:center;font-size:7pt;font-weight:700;background:#eef2ff;color:#1e3a8a;border:0.5px solid #c7d2fe;padding:1px;-webkit-print-color-adjust:exact;print-color-adjust:exact">${mg.nom}</td>`;
   ph+=`</tr><tr style="height:9px">`;
   for(const sg of sG) ph+=`<td colspan="${sg.count}" style="text-align:center;font-size:6px;color:#64748b;border:0.5px solid #e2e8f0;background:#fafafa;padding:0">${sg.count*WP>=14?'S'+sg.sem:''}</td>`;
@@ -2034,10 +2046,10 @@ function _buildPrintWindow(d, f, ji, fmt = 'A4') {
   const chevauchePeriode = t => t.debut <= f && t.fin >= d;
   for(const p of ordered){
     if(!chevauchePeriode(p)) continue;
-    ph+=_printRow(p,ji,total,WP,idxDeb,idxFin,false,vcols,todayPrintIdx);
+    ph+=_printRow(p,ji,total,WP,idxDeb,idxFin,false,printCols,todayPrintIdx);
     if(p.soustaches?.length&&!collapsed[p.id])
       for(const s of soustachesTries(p))
-        if(chevauchePeriode(s)) ph+=_printRow(s,ji,total,WP,idxDeb,idxFin,true,vcols,todayPrintIdx);
+        if(chevauchePeriode(s)) ph+=_printRow(s,ji,total,WP,idxDeb,idxFin,true,printCols,todayPrintIdx);
   }
   ph+=`</tbody></table></div><div style="font-size:7px;color:#94a3b8;text-align:right;padding:3px 0;border-top:0.5px solid #e2e8f0;margin-top:3px">Planning — Édité le ${new Date().toLocaleDateString('fr-FR')}</div></body></html>`;
   win.document.write(ph); win.document.close(); return win;
@@ -2049,7 +2061,8 @@ function _printRow(p, ji, total, WP, idxDeb, idxFin, isSub, vcols, todayPrintIdx
   let h = `<tr style="height:${rowH}px">`;
   for(let ci=0;ci<vcols.length;ci++){
     const c=vcols[ci],ck=c.key,cls=isSub?'csf':'cf';
-    h+=`<td class="${cls}" style="width:${c.width}px;max-width:${c.width}px">`;
+    const cw = c.printW ?? c.width;
+    h+=`<td class="${cls}" style="width:${cw}px;max-width:${cw}px">`;
     if(ck==='nom'){if(isSub)h+='<span style="color:#38bdf8;margin-right:2px">↳</span>';h+=`<span style="font-weight:${isSub?400:600}">${esc(p.nom)}</span>`;}
     else if(ck==='client')h+=`<span style="color:#64748b">${esc(p.client)}</span>`;
     else if(ck==='debut')h+=`<span>${p.debut.split('-').slice(1).reverse().join('/')}</span>`;
