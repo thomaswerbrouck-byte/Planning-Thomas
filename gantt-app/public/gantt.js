@@ -2052,10 +2052,14 @@ function _buildPrintWindow(d, f, ji, fmt = 'A4') {
 
   const win = window.open('','_print','width=1400,height=900');
   let ph = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Planning — ${d} / ${f}</title><style>${css}</style></head><body>`;
-  ph += `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;padding-bottom:4px;border-bottom:2px solid #1e3a8a">
-    <div><div style="font-size:13px;font-weight:700">Planning — Installation</div>
-    <div style="font-size:8.5px;color:#64748b;margin-top:2px">Période : ${d.split('-').reverse().join('/')} → ${f.split('-').reverse().join('/')} &nbsp;|&nbsp; ${total} jours &nbsp;|&nbsp; ${ordered.length} opération${ordered.length>1?'s':''}</div></div>
-    <div style="font-size:8px;color:#94a3b8">Édité le ${new Date().toLocaleDateString('fr-FR')}</div></div>`;
+  ph += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:5px;border-bottom:2px solid #1e3a8a">
+    <img src="${window.location.origin}/logo.png" alt="Hemotech" style="height:36px;object-fit:contain">
+    <div style="text-align:center">
+      <div style="font-size:12px;font-weight:700;color:#1e3a8a">Planning — Installation</div>
+      <div style="font-size:8px;color:#64748b;margin-top:2px">Période : ${d.split('-').reverse().join('/')} → ${f.split('-').reverse().join('/')} &nbsp;|&nbsp; ${total} jours &nbsp;|&nbsp; ${ordered.length} opération${ordered.length>1?'s':''}</div>
+    </div>
+    <div style="font-size:8px;color:#94a3b8;text-align:right">Édité le ${new Date().toLocaleDateString('fr-FR')}</div>
+  </div>`;
   ph += `<div style="zoom:${zoom};transform-origin:top left"><table style="width:${totalW}px"><colgroup>`;
   for(const c of printCols) ph+=`<col style="width:${c.printW}px;min-width:${c.printW}px;max-width:${c.printW}px">`;
   for(let i=0;i<total;i++) ph+=`<col style="width:${WP}px;min-width:${WP}px;max-width:${WP}px">`;
