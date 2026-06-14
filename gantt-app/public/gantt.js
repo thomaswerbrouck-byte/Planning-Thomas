@@ -1249,7 +1249,9 @@ window.toggleRowMenu = (e, id, isSub, parentId) => {
   items.push(`<button class="rmenu-item rdup" onclick="${isSub ? `dupliquerSoustache('${parentId}','${id}')` : `dupliquer('${id}')`};${_c}">
     <span class="rmenu-ico">⧉</span>Dupliquer</button>`);
   items.push(`<button class="rmenu-item rlink${hasPred ? ' active' : ''}" onclick="ouvrirPredecesseurs('${id}');${_c}">
-    <span class="rmenu-ico">🔗</span>Prédécesseurs${hasPred ? '&nbsp;<span style="color:#ea580c;font-size:8px;font-weight:700">●</span>' : ''}</button>`);
+    <span class="rmenu-ico">🔗</span>Prédécesseurs${hasPred ? `&nbsp;<span style="background:#ea580c;color:white;border-radius:8px;font-size:.65rem;padding:1px 5px;font-weight:700">${task.predecesseurs.length}</span>` : ''}</button>`);
+  items.push(`<button class="rmenu-item" onclick="suiteDe('${id}');${_c}">
+    <span class="rmenu-ico">➡️</span>Suite de…</button>`);
   items.push(`<div class="rmenu-sep"></div>`);
   items.push(`<button class="rmenu-item rdel" onclick="${isSub ? `supprimerSoustache('${parentId}','${id}')` : `supprimer('${id}')`};${_c}">
     <span class="rmenu-ico">🗑</span>Supprimer</button>`);
@@ -2406,62 +2408,121 @@ function _printRow(p, ji, total, WP, idxDeb, idxFin, isSub, vcols, todayPrintIdx
 ══════════════════════════════════════════════════════ */
 window.ouvrirPredecesseurs = (id) => {
   const task = getById(id); if (!task) return;
-  const current = new Set(task.predecesseurs || []);
+  _renderPredModal(id, '');
+};
 
+function _predOptions(id) {
   const options = [];
   for (const p of projets) {
-    if (p.id !== id) options.push({ id: p.id, label: p.nom, indent: false });
+    if (p.id !== id) options.push({ id: p.id, nom: p.nom, operation: p.operation||'', client: p.client||'', fin: p.fin, debut: p.debut, indent: false });
     for (const s of (p.soustaches || [])) {
-      if (s.id !== id) options.push({ id: s.id, label: s.nom, indent: true, parent: p.nom });
+      if (s.id !== id) options.push({ id: s.id, nom: s.nom, operation: s.operation||p.operation||'', client: s.client||p.client||'', fin: s.fin, debut: s.debut, indent: true, parent: p.nom });
     }
   }
+  return options;
+}
 
-  let h = `<h3 style="margin-bottom:8px">🔗 Prédécesseurs</h3>
-  <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:12px">Tâche : <strong>${esc(task.nom)}</strong></p>
-  <p style="font-size:.75rem;color:var(--gray-500);margin-bottom:10px">Les tâches sélectionnées doivent se terminer avant que cette tâche puisse commencer (lien Fin→Début).</p>
-  <div style="max-height:300px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:8px;padding:8px">`;
+function _renderPredModal(id, filtre) {
+  const task    = getById(id); if (!task) return;
+  const current = new Set(task.predecesseurs || []);
+  const q       = filtre.toLowerCase();
+  const options = _predOptions(id).filter(o =>
+    !q || o.nom.toLowerCase().includes(q) || o.operation.toLowerCase().includes(q) || o.client.toLowerCase().includes(q)
+  );
+  const fmtD = d => d ? d.split('-').slice(1).reverse().join('/') : '';
+
+  let h = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <h3 style="margin:0">🔗 Prédécesseurs</h3>
+    <span style="font-size:.75rem;color:var(--gray-400)">${current.size} lien${current.size>1?'s':''} actif${current.size>1?'s':''}</span>
+  </div>
+  <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:10px">Tâche : <strong>${esc(task.nom)}</strong></p>
+
+  <div style="display:flex;align-items:center;gap:6px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:7px;padding:4px 9px;margin-bottom:10px">
+    <span style="color:var(--gray-400);font-size:12px">🔍</span>
+    <input id="pred-search" type="text" placeholder="Filtrer par tâche, opération, association…" value="${esc(filtre)}"
+      style="border:none;background:transparent;outline:none;font-size:.8rem;font-family:inherit;flex:1;color:var(--gray-700)"
+      oninput="_renderPredModal('${id}',this.value)">
+  </div>
+
+  <div style="max-height:320px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:8px">`;
 
   if (!options.length) {
-    h += `<div style="color:var(--gray-400);font-size:.85rem;text-align:center;padding:16px">Aucune autre tâche disponible</div>`;
+    h += `<div style="color:var(--gray-400);font-size:.85rem;text-align:center;padding:20px">Aucune tâche trouvée</div>`;
   } else {
-    for (const opt of options) {
-      const checked = current.has(opt.id);
-      h += `<label style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-radius:4px;cursor:pointer;font-size:.83rem" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
-        <input type="checkbox" data-predid="${esc(opt.id)}" ${checked ? 'checked' : ''}>
-        ${opt.indent ? `<span style="color:#38bdf8;margin-left:8px;font-size:11px">↳</span>` : `<span style="width:8px;height:8px;border-radius:50%;background:${getColor(getById(opt.id))};flex-shrink:0;display:inline-block"></span>`}
-        <span style="${opt.indent ? 'color:#0369a1' : 'font-weight:500'}">${esc(opt.label)}</span>
-        ${opt.parent ? `<span style="font-size:.7rem;color:var(--gray-400)">(${esc(opt.parent)})</span>` : ''}
-      </label>`;
-    }
+    options.forEach(opt => {
+      const checked   = current.has(opt.id);
+      const predTask  = getById(opt.id);
+      const col       = getColor(predTask);
+      const isCycle   = peutAtteindre(id, opt.id);
+      h += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--gray-100);${isCycle?'opacity:.4;pointer-events:none':''}">
+        <input type="checkbox" data-predid="${esc(opt.id)}" ${checked?'checked':''} ${isCycle?'disabled':''} style="flex-shrink:0;cursor:pointer">
+        <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:${checked?'700':'500'};color:${checked?'var(--navy)':'var(--gray-700)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            ${opt.indent?'<span style="color:#38bdf8;margin-right:3px;font-size:10px">↳</span>':''}${esc(opt.nom)}
+          </div>
+          <div style="font-size:.7rem;color:var(--gray-400);margin-top:1px">
+            ${opt.operation?`<span style="background:var(--gray-100);border-radius:3px;padding:0 4px">${esc(opt.operation)}</span> `:''}
+            ${opt.client?`${esc(opt.client)} · `:''}
+            <span style="color:var(--gray-300)">${fmtD(opt.debut)} → ${fmtD(opt.fin)}</span>
+          </div>
+        </div>
+        ${!isCycle ? `<button onclick="suiteDeDepuis('${id}','${opt.id}')" title="Commencer juste après cette tâche"
+          style="flex-shrink:0;background:var(--blue-l);border:1px solid #bfdbfe;color:var(--blue);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:.72rem;font-weight:600;font-family:inherit;white-space:nowrap">
+          ➡️ Suite de</button>` : `<span style="font-size:.65rem;color:var(--gray-400)">⚠ cycle</span>`}
+      </div>`;
+    });
   }
 
   h += `</div>
   <div class="m-actions">
     <button class="btn" onclick="fermerModal()">Annuler</button>
-    <button class="btn btn-primary" onclick="sauverPredecesseurs('${id}')">Enregistrer</button>
+    <button class="btn btn-primary" onclick="sauverPredecesseurs('${id}')">✓ Enregistrer les liens</button>
   </div>`;
 
   ouvrirModal(h);
-};
+  setTimeout(() => document.getElementById('pred-search')?.focus(), 50);
+}
 
 window.sauverPredecesseurs = (id) => {
   const task = getById(id); if (!task) return;
   const newPreds = [...document.querySelectorAll('[data-predid]:checked')].map(cb => cb.dataset.predid);
-
-  const cycleNoms = newPreds
-    .filter(predId => peutAtteindre(id, predId))
-    .map(predId => getById(predId)?.nom || predId);
-
-  if (cycleNoms.length) {
-    toast(`Cycle détecté — impossible : "${cycleNoms.join(', ')}"`, 'err');
-    return;
-  }
-
+  const cycleNoms = newPreds.filter(predId => peutAtteindre(id, predId)).map(predId => getById(predId)?.nom || predId);
+  if (cycleNoms.length) { toast(`Cycle détecté : "${cycleNoms.join(', ')}"`, 'err'); return; }
   task.predecesseurs = newPreds;
+  fermerModal(); propagerDates(id); renderAll(); scheduleSave();
+  toast(`🔗 ${newPreds.length} prédécesseur${newPreds.length>1?'s':''} enregistré${newPreds.length>1?'s':''}`, 'ok');
+};
+
+/* ── Suite de : lier + aligner les dates en un clic ── */
+window.suiteDe = (id) => {
+  /* Ouvre la modale pour choisir la tâche "précédente" */
+  ouvrirPredecesseurs(id);
+  toast('Cochez la tâche précédente puis cliquez ➡️ Suite de', 'ok');
+};
+
+window.suiteDeDepuis = (id, predId) => {
+  const task = getById(id);
+  const pred = getById(predId);
+  if (!task || !pred) return;
+
+  /* Ajouter le prédécesseur s'il n'y est pas déjà */
+  if (!task.predecesseurs) task.predecesseurs = [];
+  if (!task.predecesseurs.includes(predId)) task.predecesseurs.push(predId);
+
+  /* Aligner les dates : débute le lendemain de la fin du prédécesseur */
+  const dur      = Math.max(0, Math.round((new Date(task.fin) - new Date(task.debut)) / 86400000));
+  const newDebut = addDays(pred.fin, 1);
+  const newFin   = addDays(newDebut, dur);
+  task.debut = newDebut;
+  task.fin   = newFin;
+
   fermerModal();
   propagerDates(id);
   renderAll();
   scheduleSave();
+  toast(`➡️ "${esc(task.nom)}" démarre après "${esc(pred.nom)}"`, 'ok');
 };
 
 /* ── Flèches de dépendance SVG ── */
