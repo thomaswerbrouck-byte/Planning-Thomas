@@ -198,8 +198,6 @@
       pwdError.style.display = 'none';
     }
 
-    overlay.style.display = 'none';
-
     /* Appliquer le rôle et afficher le badge */
     applyRole(p);
     const badge  = document.getElementById('role-badge');
@@ -209,7 +207,19 @@
     badge.className   = role;
     badge.style.display = '';
 
-    startApp(p);
+    /* Pour les profils restreints : masquer le contenu Gantt pendant le chargement
+       afin d'éviter de voir des données non filtrées */
+    const appMain = document.querySelector('.app-main');
+    if (role === 'eco' || role === 'aseptic') {
+      appMain.style.visibility = 'hidden';
+    }
+
+    overlay.style.display = 'none';
+
+    await startApp(p);
+
+    /* Révéler le contenu une fois les données chargées et filtrées */
+    appMain.style.visibility = '';
   }
 
   async function startApp(pseudo) {

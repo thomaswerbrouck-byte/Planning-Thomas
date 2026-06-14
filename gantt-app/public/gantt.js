@@ -171,6 +171,7 @@ var ganttApp = {
     if (data.tasks)       projets     = data.tasks.map(normalizeTask);
     if (data.techniciens) techniciens = data.techniciens;
     if (data.colonnes)    colonnes    = data.colonnes;
+    if (userRole === 'eco' || userRole === 'aseptic') window._applyRoleFilter?.();
     renderAll();
   }
 };
