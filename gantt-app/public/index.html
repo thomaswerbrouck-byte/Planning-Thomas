@@ -100,7 +100,7 @@
         <input type="text" id="search-input" placeholder="Rechercher…"
           style="border:none;background:transparent;outline:none;font-size:.77rem;color:var(--gray-700);width:140px;font-family:inherit"
           oninput="doSearch(this.value)"
-          onkeydown="if(e.key==='Escape'){this.value='';doSearch('')}">
+          onkeydown="if(event.key==='Escape'){this.value='';doSearch('')}">
         <button id="search-clear" onclick="document.getElementById('search-input').value='';doSearch('')"
           style="display:none;background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:12px;padding:0;line-height:1">✕</button>
       </div>

@@ -315,6 +315,7 @@ function rowsForRender() {
   const sorted = sortCol ? [...projets].sort(cmpSort) : projets;
 
   for (const p of sorted) {
+    if (!matchSearch(p)) continue;   // ← recherche globale
     const parentMatch = matchFiltres(p);
     if (!hasFilter || parentMatch) {
       rows.push({ type: 'parent', task: p });
