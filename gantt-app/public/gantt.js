@@ -397,9 +397,9 @@ function renderGantt() {
     const c = vcols[ci];
     const arrow = sortCol===c.key ? (sortDir===1?' ▲':' ▼') : '';
     const globalCi = colonnes.indexOf(c);
-    h += `<td rowspan="3" class="th-col sortable"
-      style="position:sticky;top:0;left:${lefts[ci]}px;z-index:40;width:${c.width}px"
-      onclick="doSort('${c.key}')">
+    h += `<td rowspan="3" class="th-col sortable" data-ci="${globalCi}" data-key="${c.key}"
+      style="position:sticky;top:0;left:${lefts[ci]}px;z-index:40;width:${c.width}px;user-select:none"
+      onmousedown="colDragStart(event,${globalCi})" onclick="doSort('${c.key}')">
       ${esc(c.label)}<span style="font-size:7px;margin-left:2px;opacity:${sortCol===c.key?1:.25}">${arrow}</span>
       <div class="col-resizer" style="position:absolute;right:0;top:0;bottom:0;width:6px;cursor:col-resize;z-index:50" onmousedown="startColResize(event,${globalCi})"></div>
     </td>`;
@@ -915,6 +915,87 @@ window.startColResize = (e, idx) => {
   e.stopPropagation(); e.preventDefault();
   colResizing = idx; colResX0 = e.clientX; colResW0 = colonnes[idx].width;
 };
+
+/* ── Drag & drop des colonnes dans l'en-tête du tableau ── */
+let _colDragIdx = null, _colDragMoved = false, _colDragGhost = null, _colDragIndicator = null;
+
+window.colDragStart = (e, idx) => {
+  if (e.target.classList.contains('col-resizer')) return; // laisser le resize gérer
+  _colDragIdx   = idx;
+  _colDragMoved = false;
+
+  /* Fantôme visuel qui suit la souris */
+  _colDragGhost = document.createElement('div');
+  _colDragGhost.textContent = colonnes[idx].label;
+  _colDragGhost.style.cssText = `position:fixed;z-index:99999;pointer-events:none;padding:5px 12px;
+    background:var(--blue);color:white;border-radius:6px;font-size:.78rem;font-weight:700;
+    font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:.92;white-space:nowrap;
+    left:${e.clientX+10}px;top:${e.clientY-16}px`;
+  document.body.appendChild(_colDragGhost);
+
+  /* Indicateur de position (trait bleu vertical) */
+  _colDragIndicator = document.createElement('div');
+  _colDragIndicator.style.cssText = `position:fixed;z-index:99998;pointer-events:none;
+    width:3px;background:var(--blue);top:0;bottom:0;display:none;border-radius:2px`;
+  document.body.appendChild(_colDragIndicator);
+};
+
+document.addEventListener('mousemove', e => {
+  if (_colDragIdx === null) return;
+  _colDragMoved = true;
+  _colDragGhost.style.left = (e.clientX + 10) + 'px';
+  _colDragGhost.style.top  = (e.clientY - 16) + 'px';
+
+  /* Trouver l'en-tête cible sous le curseur */
+  const th = _colThUnder(e.clientX, e.clientY);
+  if (th) {
+    const rect = th.getBoundingClientRect();
+    const insertBefore = e.clientX < rect.left + rect.width / 2;
+    _colDragIndicator.style.display = '';
+    _colDragIndicator.style.left = (insertBefore ? rect.left : rect.right) - 1 + 'px';
+    document.querySelectorAll('.th-col').forEach(t => t.classList.remove('col-drag-over-left','col-drag-over-right'));
+    th.classList.add(insertBefore ? 'col-drag-over-left' : 'col-drag-over-right');
+  } else {
+    _colDragIndicator.style.display = 'none';
+    document.querySelectorAll('.th-col').forEach(t => t.classList.remove('col-drag-over-left','col-drag-over-right'));
+  }
+}, true);
+
+document.addEventListener('mouseup', e => {
+  if (_colDragIdx === null) return;
+  _colDragGhost?.remove(); _colDragGhost = null;
+  _colDragIndicator?.remove(); _colDragIndicator = null;
+  document.querySelectorAll('.th-col').forEach(t => t.classList.remove('col-drag-over-left','col-drag-over-right'));
+
+  if (_colDragMoved) {
+    const th = _colThUnder(e.clientX, e.clientY);
+    if (th) {
+      const toIdx   = +th.dataset.ci;
+      if (toIdx !== _colDragIdx) {
+        const rect       = th.getBoundingClientRect();
+        const insertBefore = e.clientX < rect.left + rect.width / 2;
+        const [moved]    = colonnes.splice(_colDragIdx, 1);
+        const newTo      = colonnes.indexOf(colonnes.find((_, i) => {
+          /* recalcule l'index après suppression */
+          const origIdx = _colDragIdx <= toIdx ? toIdx - 1 : toIdx;
+          return i === (insertBefore ? origIdx : origIdx + 1) - (_colDragIdx < toIdx ? 0 : 0);
+        }));
+        /* Calcul simple : reconstruire l'index cible après splice */
+        let dest = toIdx > _colDragIdx ? toIdx - 1 : toIdx;
+        if (!insertBefore) dest++;
+        colonnes.splice(Math.max(0, dest), 0, moved);
+        renderAll(); saveNow();
+      }
+    }
+    e.stopPropagation(); // empêche le onclick/doSort de se déclencher
+  }
+  _colDragIdx = null; _colDragMoved = false;
+}, true);
+
+function _colThUnder(x, y) {
+  const els = document.elementsFromPoint(x, y);
+  return els.find(el => el.classList?.contains('th-col') && el.dataset.ci !== undefined) || null;
+}
 window.doSort = k => {
   if (sortCol===k) sortDir*=-1; else { sortCol=k; sortDir=1; }
   /* Trier les données directement (réordonne projets et sous-tâches) */

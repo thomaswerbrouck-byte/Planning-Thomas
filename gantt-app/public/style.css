@@ -554,11 +554,17 @@ tr.row-drag-over td { box-shadow: inset 0 -2px 0 #3b82f6; }
 .swatch:hover { transform: scale(1.15); }
 .swatch.sel { border-color: var(--gray-900); }
 
-/* ─── Colonnes drag & drop ──────────────── */
+/* ─── Colonnes drag & drop (modale) ─────── */
 .col-drag-row { transition: background .1s; }
 .col-drag-row.col-drag-ghost { opacity: .3; }
 .col-drag-row.col-drag-over { background: #eff6ff; border-top: 2px solid #3b82f6; }
 .col-drag-handle:hover { color: #94a3b8 !important; }
+
+/* ─── Colonnes drag & drop (en-tête Gantt) ─ */
+.th-col { cursor: grab; }
+.th-col:active { cursor: grabbing; }
+.th-col.col-drag-over-left  { box-shadow: -3px 0 0 0 var(--blue) inset; }
+.th-col.col-drag-over-right { box-shadow:  3px 0 0 0 var(--blue) inset; }
 
 /* ─── History ───────────────────────────── */
 #history-panel {
