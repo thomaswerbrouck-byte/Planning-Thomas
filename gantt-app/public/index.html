@@ -226,10 +226,12 @@
     loader.classList.add('show');
     document.getElementById('loading-sub').textContent = 'Récupération des données…';
 
-    await startApp(p);
-
-    /* Cacher le loader une fois prêt */
-    loader.classList.remove('show');
+    try {
+      await startApp(p);
+    } finally {
+      /* Cacher le loader quoi qu'il arrive (succès ou erreur) */
+      loader.classList.remove('show');
+    }
   }
 
   async function startApp(pseudo) {
@@ -254,8 +256,8 @@
       await loadProject(projects[0].id, pseudo, true);
     } catch(err) {
       console.error('Erreur startApp:', err);
-      document.getElementById('gantt-inner').innerHTML =
-        '<div style="padding:40px;color:#ef4444">Erreur de chargement : ' + err.message + '</div>';
+      const gi = document.getElementById('gantt-inner');
+      if (gi) gi.innerHTML = '<div style="padding:40px;color:#ef4444">Erreur de chargement : ' + err.message + '</div>';
     }
   }
 
@@ -522,22 +524,24 @@
     window._pseudo   = '';
 
     /* Remettre le formulaire de connexion à zéro */
-    document.getElementById('pseudo-input').value        = '';
-    document.getElementById('pwd-wrap').style.display    = 'none';
-    document.getElementById('pwd-input').value           = '';
-    document.getElementById('btn-join').textContent      = 'Rejoindre →';
-    document.getElementById('login-hint').textContent    = 'Choisissez votre nom';
+    document.getElementById('pseudo-input').value     = '';
+    document.getElementById('pwd-wrap').style.display = 'none';
+    document.getElementById('pwd-input').value        = '';
+    document.getElementById('btn-join').textContent   = 'Rejoindre →';
+    document.getElementById('login-hint').textContent = 'Choisissez votre nom';
 
     /* Masquer badge, users bar, titre */
     document.getElementById('role-badge').style.display  = 'none';
     document.getElementById('users-label').textContent   = '0 connecté';
     document.getElementById('users-dots').innerHTML      = '';
     document.getElementById('project-title').textContent = 'Planning';
-    document.getElementById('toolbar').innerHTML         = '';
-    document.getElementById('gantt-inner').innerHTML     = '';
 
-    /* Déconnecter le WebSocket */
-    try { window.ganttSocket?.socket?.disconnect(); } catch(e) {}
+    /* Vider le Gantt avec null-check */
+    const ganttInner = document.getElementById('gantt-inner');
+    if (ganttInner) ganttInner.innerHTML = '';
+
+    /* Déconnecter le WebSocket proprement */
+    try { window.ganttSocket?.socket?.disconnect(); window.ganttSocket.socket = null; } catch(e) {}
 
     /* Afficher l'écran de connexion */
     document.getElementById('login-overlay').style.display = '';
