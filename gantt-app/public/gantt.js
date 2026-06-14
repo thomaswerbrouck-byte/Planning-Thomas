@@ -205,14 +205,26 @@ function valeursUniques(key) {
 /* Pour ECO/ASEPTIC : uniquement les valeurs issues de leurs tâches attribuées.
    Pour les autres rôles : identique à valeursUniques. */
 function valeursFiltrables(key) {
-  if (userRole !== 'eco' && userRole !== 'aseptic') return valeursUniques(key);
-  const techFilter = filtres['tech'] || [];
   const v = new Set();
   for (const p of projets) {
-    if (techFilter.includes(p.tech ?? '')) v.add(String(p[key] ?? ''));
-    p.soustaches?.forEach(s => {
-      if (techFilter.includes(s.tech ?? '')) v.add(String(s[key] ?? ''));
+    /* Vérifier les autres filtres actifs (tous sauf celui qu'on est en train d'ouvrir) */
+    const autresFiltresMatch = Object.entries(filtres).every(([k, vals]) => {
+      if (k === key || !vals?.length) return true;
+      return vals.includes(String(p[k] ?? ''));
     });
+    if (!autresFiltresMatch) continue;
+
+    /* ECO/ASEPTIC : limiter aux tâches qui leur sont attribuées */
+    if (userRole === 'eco' || userRole === 'aseptic') {
+      const techFilter = filtres['tech'] || [];
+      if (techFilter.includes(p.tech ?? '')) v.add(String(p[key] ?? ''));
+      p.soustaches?.forEach(s => {
+        if (techFilter.includes(s.tech ?? '')) v.add(String(s[key] ?? ''));
+      });
+    } else {
+      v.add(String(p[key] ?? ''));
+      p.soustaches?.forEach(s => v.add(String(s[key] ?? '')));
+    }
   }
   return [...v].sort();
 }
