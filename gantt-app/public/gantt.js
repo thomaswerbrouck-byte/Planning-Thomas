@@ -162,6 +162,7 @@ var ganttApp = {
     applyRowH();
     renderAll();
     if (!ganttApp._bound) { bindEvents(); ganttApp._bound = true; }
+    setTimeout(scrollAujourdhui, 50);
   },
 
   applyFullUpdate(data) {
