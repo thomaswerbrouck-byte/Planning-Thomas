@@ -2016,9 +2016,14 @@ function _buildPrintWindow(d, f, ji, fmt = 'A4') {
   ph+=`</tr><tr style="height:11px">`;
   for(const j of ji){const bg=j.wk?'#eef2ff':'white',fc=j.wk?'#818cf8':'#475569';ph+=`<td style="background:${bg};color:${fc};font-size:${WP>=9?6.5:5.5}px;text-align:center;border:0.5px solid #e2e8f0;border-bottom:1px solid #94a3b8;padding:0;line-height:1.1;vertical-align:middle">${WP>=8?`<div style="font-size:5px">${DWLET[j.dw]}</div>`:''}<div style="font-weight:700">${j.num}</div></td>`;}
   ph+=`</tr></thead><tbody>`;
+  /* N'imprimer que les tâches dont la période chevauche la plage sélectionnée */
+  const chevauchePeriode = t => t.debut <= f && t.fin >= d;
   for(const p of ordered){
+    if(!chevauchePeriode(p)) continue;
     ph+=_printRow(p,ji,total,WP,idxDeb,idxFin,false,vcols);
-    if(p.soustaches?.length&&!collapsed[p.id])for(const s of soustachesTries(p))ph+=_printRow(s,ji,total,WP,idxDeb,idxFin,true,vcols);
+    if(p.soustaches?.length&&!collapsed[p.id])
+      for(const s of soustachesTries(p))
+        if(chevauchePeriode(s)) ph+=_printRow(s,ji,total,WP,idxDeb,idxFin,true,vcols);
   }
   ph+=`</tbody></table></div><div style="font-size:7px;color:#94a3b8;text-align:right;padding:3px 0;border-top:0.5px solid #e2e8f0;margin-top:3px">Planning — Édité le ${new Date().toLocaleDateString('fr-FR')}</div></body></html>`;
   win.document.write(ph); win.document.close(); return win;
