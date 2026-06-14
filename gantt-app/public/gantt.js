@@ -1130,6 +1130,21 @@ window.upd = (id, champ, val) => {
   p[champ] = val;
   if (p.debut > p.fin) p.fin = p.debut;
   if (champ === 'fin' || champ === 'debut') propagerDates(id);
+
+  /* Propagation aux sous-tâches si c'est une tâche parente */
+  const parent = projets.find(x => x.id === id);
+  if (parent?.soustaches?.length) {
+    const isCustomCol = !COLS_BUILTIN.has(champ);
+    /* État "Terminé" → toutes les sous-tâches passent à Terminé */
+    if (champ === 'etat' && val === 'Terminé') {
+      parent.soustaches.forEach(s => { s.etat = 'Terminé'; });
+    }
+    /* Colonne personnalisée (ex: Opérations) → toutes les sous-tâches héritent */
+    if (isCustomCol) {
+      parent.soustaches.forEach(s => { s[champ] = val; });
+    }
+  }
+
   renderAll(); scheduleSave();
 };
 
