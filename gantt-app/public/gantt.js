@@ -136,7 +136,7 @@ var ganttApp = {
 
     projets = (data.tasks || []).map(normalizeTask);
 
-    /* ── Migration : ancienne colonne perso "opérations" → clé native "operation" ── */
+    /* ── Migration : ancienne colonne perso → clé native "operation" ── */
     const migrated = _migrateOperationCol();
 
     /* ── Garantie : la colonne native "operation" est toujours présente dans colonnes ── */
@@ -144,8 +144,8 @@ var ganttApp = {
       const idxEtat = colonnes.findIndex(c => c.key === 'etat');
       colonnes.splice(idxEtat >= 0 ? idxEtat : colonnes.length, 0,
         { key: 'operation', label: 'Opérations', width: 130, visible: true });
-      migrated || saveNow(); // sauvegarder si la migration n'a pas déjà déclenché une sauvegarde
     }
+
     if (migrated) saveNow();
 
     initAnneeSelect();
@@ -1588,35 +1588,43 @@ window.updateTechCoul = (i, hex) => { techniciens[i].couleur=hex; document.query
 const COLS_BUILTIN = new Set(['client','nom','operation','debut','fin','tech','etat']);
 
 function _migrateOperationCol() {
-  /* Cherche une ancienne colonne personnalisée dont le label ressemble à "opération(s)" */
-  const oldCol = colonnes.find(c =>
-    !['client','nom','operation','debut','fin','tech','etat'].includes(c.key) &&
-    c.label.toLowerCase().replace(/s$/,'').normalize('NFD').replace(/\p{Diacritic}/gu,'') === 'operation'
-  );
-  if (!oldCol) return false; // rien à migrer
+  /* Trouve toutes les colonnes personnalisées (clé non native) */
+  const customCols = colonnes.filter(c => !['client','nom','operation','debut','fin','tech','etat'].includes(c.key));
+  if (!customCols.length) return false;
 
-  const oldKey = oldCol.key;
+  let migrated = false;
 
-  /* Copier les valeurs dans la clé native "operation" sur chaque tâche */
-  for (const p of projets) {
-    if (p[oldKey] !== undefined && !p.operation) p.operation = p[oldKey];
-    delete p[oldKey];
-    for (const s of (p.soustaches || [])) {
-      if (s[oldKey] !== undefined && !s.operation) s.operation = s[oldKey];
-      delete s[oldKey];
+  for (const oldCol of customCols) {
+    const oldKey = oldCol.key;
+
+    /* Copier les valeurs vers "operation" si vide, puis supprimer l'ancienne clé */
+    for (const p of projets) {
+      if (p[oldKey] !== undefined) {
+        if (!p.operation && p[oldKey]) p.operation = p[oldKey];
+        delete p[oldKey];
+      }
+      for (const s of (p.soustaches || [])) {
+        if (s[oldKey] !== undefined) {
+          if (!s.operation && s[oldKey]) s.operation = s[oldKey];
+          delete s[oldKey];
+        }
+      }
     }
+
+    /* Supprimer l'ancienne colonne de la liste */
+    colonnes = colonnes.filter(c => c.key !== oldKey);
+
+    /* Récupérer le label/largeur pour la colonne native si pas encore définie */
+    if (!colonnes.find(c => c.key === 'operation')) {
+      const idxEtat = colonnes.findIndex(c => c.key === 'etat');
+      const pos = idxEtat >= 0 ? idxEtat : colonnes.length;
+      colonnes.splice(pos, 0, { key: 'operation', label: oldCol.label, width: oldCol.width || 130, visible: oldCol.visible !== false });
+    }
+
+    migrated = true;
   }
 
-  /* Supprimer l'ancienne colonne perso de la liste des colonnes */
-  colonnes = colonnes.filter(c => c.key !== oldKey);
-
-  /* S'assurer que la colonne native "operation" est présente dans colonnes */
-  if (!colonnes.find(c => c.key === 'operation')) {
-    const idxEtat = colonnes.findIndex(c => c.key === 'etat');
-    const pos = idxEtat >= 0 ? idxEtat : colonnes.length;
-    colonnes.splice(pos, 0, { key: 'operation', label: oldCol.label, width: oldCol.width || 130, visible: oldCol.visible !== false });
-  }
-  return true;
+  return migrated;
 }
 window.ouvrirConfigCols = () => {
   let h = `<h3>Colonnes — visibilité &amp; largeur</h3>
