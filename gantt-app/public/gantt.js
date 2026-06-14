@@ -146,7 +146,16 @@ var ganttApp = {
         { key: 'operation', label: 'Opérations', width: 130, visible: true });
     }
 
-    if (migrated) saveNow();
+    /* ── Propagation : operation de la tâche parente vers ses sous-tâches ── */
+    let propagated = false;
+    for (const p of projets) {
+      if (!p.soustaches?.length) continue;
+      for (const s of p.soustaches) {
+        if (!s.operation && p.operation) { s.operation = p.operation; propagated = true; }
+      }
+    }
+
+    if (migrated || propagated) saveNow();
 
     initAnneeSelect();
     initJours();
