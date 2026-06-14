@@ -1368,15 +1368,26 @@ function _renderCommentaires(id) {
     h += `<div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:12px;padding-right:2px">`;
     task.commentaires.forEach((c, i) => {
       const isMe = c.auteur === pseudo;
-      h += `<div style="background:${isMe?'#eff6ff':'var(--gray-50)'};border:1px solid ${isMe?'#bfdbfe':'var(--gray-200)'};border-radius:10px;padding:10px 12px;position:relative">
+      const canEdit = !ro && (isMe || userRole === 'admin');
+      h += `<div style="background:${isMe?'#eff6ff':'var(--gray-50)'};border:1px solid ${isMe?'#bfdbfe':'var(--gray-200)'};border-radius:10px;padding:10px 12px;position:relative" id="cmt-${id}-${i}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
           <span style="font-weight:700;font-size:.78rem;color:${isMe?'var(--blue)':'var(--gray-700)'}">${esc(c.auteur)}</span>
           <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:.7rem;color:var(--gray-400)">${fmtDate(c.date)}</span>
-            ${!ro && (isMe || userRole==='admin') ? `<button onclick="supprimerCommentaire('${id}',${i})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:11px;padding:0;line-height:1" title="Supprimer">✕</button>` : ''}
+            <span style="font-size:.7rem;color:var(--gray-400)">${fmtDate(c.date)}${c.modifie?' <em style="color:var(--gray-300)">(modifié)</em>':''}</span>
+            ${canEdit ? `<button onclick="editerCommentaire('${id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:11px;padding:0;line-height:1" title="Modifier">✏️</button>` : ''}
+            ${canEdit ? `<button onclick="supprimerCommentaire('${id}',${i})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:11px;padding:0;line-height:1" title="Supprimer">✕</button>` : ''}
           </div>
         </div>
-        <div style="font-size:.85rem;color:var(--gray-700);white-space:pre-wrap;word-break:break-word">${esc(c.texte)}</div>
+        <div id="cmt-text-${id}-${i}" style="font-size:.85rem;color:var(--gray-700);white-space:pre-wrap;word-break:break-word">${esc(c.texte)}</div>
+        <div id="cmt-edit-${id}-${i}" style="display:none;margin-top:6px">
+          <textarea id="cmt-edit-ta-${id}-${i}" rows="3"
+            style="width:100%;padding:8px;border:1.5px solid var(--blue);border-radius:8px;font-size:.85rem;font-family:inherit;resize:none;outline:none"
+            onkeydown="if(event.key==='Escape')annulerEditionCommentaire('${id}',${i})">${esc(c.texte)}</textarea>
+          <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:5px">
+            <button class="btn" onclick="annulerEditionCommentaire('${id}',${i})">Annuler</button>
+            <button class="btn btn-primary" onclick="sauverEditionCommentaire('${id}',${i})">Enregistrer</button>
+          </div>
+        </div>
       </div>`;
     });
     h += `</div>`;
@@ -1415,9 +1426,33 @@ window.ajouterCommentaire = (id) => {
 
 window.supprimerCommentaire = (id, idx) => {
   const task = getById(id); if (!task) return;
+  if (!confirm('Supprimer ce commentaire ?')) return;
   task.commentaires.splice(idx, 1);
   renderAll(); scheduleSave();
   _renderCommentaires(id);
+};
+
+window.editerCommentaire = (id, idx) => {
+  document.getElementById(`cmt-text-${id}-${idx}`).style.display = 'none';
+  document.getElementById(`cmt-edit-${id}-${idx}`).style.display = '';
+  const ta = document.getElementById(`cmt-edit-ta-${id}-${idx}`);
+  if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+};
+
+window.annulerEditionCommentaire = (id, idx) => {
+  document.getElementById(`cmt-text-${id}-${idx}`).style.display = '';
+  document.getElementById(`cmt-edit-${id}-${idx}`).style.display = 'none';
+};
+
+window.sauverEditionCommentaire = (id, idx) => {
+  const task = getById(id); if (!task) return;
+  const val = document.getElementById(`cmt-edit-ta-${id}-${idx}`)?.value?.trim();
+  if (!val) { toast('Commentaire vide', 'err'); return; }
+  task.commentaires[idx].texte   = val;
+  task.commentaires[idx].modifie = true;
+  renderAll(); scheduleSave();
+  _renderCommentaires(id);
+  toast('✏️ Commentaire modifié', 'ok');
 };
 
 /* ── Historique par tâche ── */
