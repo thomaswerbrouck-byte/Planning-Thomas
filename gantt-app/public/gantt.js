@@ -96,12 +96,13 @@ var techniciens = [
 ];
 
 var colonnes = [
-  { key: 'client', label: 'Association', width: 110, visible: true },
-  { key: 'nom',    label: 'Opération',   width: 360, visible: true },
-  { key: 'debut',  label: 'Début',       width: 92,  visible: true },
-  { key: 'fin',    label: 'Fin',         width: 92,  visible: true },
-  { key: 'tech',   label: 'Attribution', width: 130, visible: true },
-  { key: 'etat',   label: 'État',        width: 90,  visible: true },
+  { key: 'client',    label: 'Association', width: 110, visible: true },
+  { key: 'nom',       label: 'Tâche',       width: 360, visible: true },
+  { key: 'operation', label: 'Opérations',  width: 130, visible: true },
+  { key: 'debut',     label: 'Début',       width: 92,  visible: true },
+  { key: 'fin',       label: 'Fin',         width: 92,  visible: true },
+  { key: 'tech',      label: 'Attribution', width: 130, visible: true },
+  { key: 'etat',      label: 'État',        width: 90,  visible: true },
 ];
 
 var projets = [];
@@ -134,6 +135,9 @@ var ganttApp = {
     if (data.collapsed)   collapsed   = data.collapsed;
 
     projets = (data.tasks || []).map(normalizeTask);
+
+    /* ── Migration : ancienne colonne perso "opérations" → clé native "operation" ── */
+    _migrateOperationCol();
 
     initAnneeSelect();
     initJours();
@@ -502,11 +506,12 @@ function buildRow(p, total, isSub, parentId, lefts, orphanParentName = null) {
       }
       h += `</div>`;
     }
-    else if (ck === 'client') h += `<input type="text"  value="${esc(p.client)}" onchange="upd('${p.id}','client',this.value)">`;
-    else if (ck === 'debut')  h += `<input type="date"  value="${p.debut}"       onchange="upd('${p.id}','debut',this.value)">`;
-    else if (ck === 'fin')    h += `<input type="date"  value="${p.fin}"         onchange="upd('${p.id}','fin',this.value)">`;
-    else if (ck === 'tech')   h += `<select onchange="upd('${p.id}','tech',this.value)" style="background:${colL};color:${col};font-weight:600">${techOpts}</select>`;
-    else if (ck === 'etat')   h += `<select class="${ETAT_META[p.etat]?.cls??''}" onchange="upd('${p.id}','etat',this.value)">${etatOpts}</select>`;
+    else if (ck === 'client')    h += `<input type="text" value="${esc(p.client)}"         onchange="upd('${p.id}','client',this.value)">`;
+    else if (ck === 'operation') h += `<input type="text" value="${esc(p.operation||'')}"   onchange="upd('${p.id}','operation',this.value)">`;
+    else if (ck === 'debut')     h += `<input type="date" value="${p.debut}"                onchange="upd('${p.id}','debut',this.value)">`;
+    else if (ck === 'fin')       h += `<input type="date" value="${p.fin}"                  onchange="upd('${p.id}','fin',this.value)">`;
+    else if (ck === 'tech')      h += `<select onchange="upd('${p.id}','tech',this.value)" style="background:${colL};color:${col};font-weight:600">${techOpts}</select>`;
+    else if (ck === 'etat')      h += `<select class="${ETAT_META[p.etat]?.cls??''}" onchange="upd('${p.id}','etat',this.value)">${etatOpts}</select>`;
     else h += `<input type="text" value="${esc(p[ck]||'')}" onchange="upd('${p.id}','${ck}',this.value)">`;
     h += `</td>`;
   }
@@ -936,6 +941,7 @@ window.ajouterSoustache = parentId => {
   p.soustaches.push({
     id: 'st_'+Date.now(), nom: 'Nouvelle sous-tâche',
     client: p.client, debut: p.debut, fin: p.fin,
+    operation: p.operation || '',
     tech: p.tech, etat: 'À venir', ...customVals
   });
   collapsed[parentId] = false;
@@ -1134,15 +1140,12 @@ window.upd = (id, champ, val) => {
   /* Propagation aux sous-tâches si c'est une tâche parente */
   const parent = projets.find(x => x.id === id);
   if (parent?.soustaches?.length) {
-    const isCustomCol = !COLS_BUILTIN.has(champ);
     /* État "Terminé" → toutes les sous-tâches passent à Terminé */
-    if (champ === 'etat' && val === 'Terminé') {
+    if (champ === 'etat' && val === 'Terminé')
       parent.soustaches.forEach(s => { s.etat = 'Terminé'; });
-    }
-    /* Colonne personnalisée (ex: Opérations) → toutes les sous-tâches héritent */
-    if (isCustomCol) {
-      parent.soustaches.forEach(s => { s[champ] = val; });
-    }
+    /* Colonne Opérations → toutes les sous-tâches héritent */
+    if (champ === 'operation')
+      parent.soustaches.forEach(s => { s.operation = val; });
   }
 
   renderAll(); scheduleSave();
@@ -1205,11 +1208,12 @@ window.toggleCollapseAll = () => {
 
 function _statsColsDisponibles() {
   return [
-    { key: 'etat',   label: 'État',        color: '#64748b', fixed: true },
-    { key: 'client', label: colonnes.find(c=>c.key==='client')?.label || 'Association', color: '#0ea5e9', fixed: true },
-    { key: 'tech',   label: colonnes.find(c=>c.key==='tech')?.label   || 'Attribution', color: null,     fixed: true },
+    { key: 'operation', label: colonnes.find(c=>c.key==='operation')?.label || 'Opérations', color: 'var(--navy)', fixed: true },
+    { key: 'etat',      label: 'État',        color: '#64748b', fixed: true },
+    { key: 'client',    label: colonnes.find(c=>c.key==='client')?.label || 'Association',   color: '#0ea5e9', fixed: true },
+    { key: 'tech',      label: colonnes.find(c=>c.key==='tech')?.label   || 'Attribution',   color: null,     fixed: true },
     ...colonnes.filter(c => !COLS_BUILTIN.has(c.key) && c.visible !== false)
-               .map(c => ({ key: c.key, label: c.label, color: 'var(--navy)', fixed: false })),
+               .map(c => ({ key: c.key, label: c.label, color: '#7c3aed', fixed: false })),
   ];
 }
 
@@ -1236,9 +1240,9 @@ function _renderStats(selectedKeys) {
   const allRows = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
   const nbSubs  = allRows.reduce((s, p) => s + (p.soustaches?.length || 0), 0);
 
-  /* Colonne personnalisée principale (ex: "Opérations") */
-  const primaryCustom = colonnes.find(c => !COLS_BUILTIN.has(c.key) && c.visible !== false);
-  const primKey = primaryCustom?.key;
+  /* Colonne Opérations = colonne native principale pour les stats */
+  const primaryCustom = colonnes.find(c => c.key === 'operation');
+  const primKey = 'operation';
 
   /* On ne retient que les tâches ayant une valeur dans la colonne principale */
   const rows = primKey ? allRows.filter(p => p[primKey]) : allRows;
@@ -1572,7 +1576,38 @@ window.supprimerTech = (i) => {
 window.updateTechNom = (i, val) => { const old = techniciens[i].nom; techniciens[i].nom = val; for (const p of projets) { if(p.tech===old)p.tech=val; p.soustaches?.forEach(s=>{if(s.tech===old)s.tech=val;}); } saveNow(); };
 window.updateTechCoul = (i, hex) => { techniciens[i].couleur=hex; document.querySelectorAll(`#cg${i} .swatch`).forEach(s=>s.classList.toggle('sel',s.dataset.hex===hex)); document.getElementById('dot'+i).style.background=hex; renderAll(); saveNow(); };
 
-const COLS_BUILTIN = new Set(['client','nom','debut','fin','tech','etat']);
+const COLS_BUILTIN = new Set(['client','nom','operation','debut','fin','tech','etat']);
+
+function _migrateOperationCol() {
+  /* Cherche une ancienne colonne personnalisée dont le label ressemble à "opération(s)" */
+  const oldCol = colonnes.find(c =>
+    !['client','nom','operation','debut','fin','tech','etat'].includes(c.key) &&
+    c.label.toLowerCase().replace(/s$/,'').normalize('NFD').replace(/\p{Diacritic}/gu,'') === 'operation'
+  );
+  if (!oldCol) return; // rien à migrer
+
+  const oldKey = oldCol.key;
+
+  /* Copier les valeurs dans la clé native "operation" sur chaque tâche */
+  for (const p of projets) {
+    if (p[oldKey] !== undefined && !p.operation) p.operation = p[oldKey];
+    delete p[oldKey];
+    for (const s of (p.soustaches || [])) {
+      if (s[oldKey] !== undefined && !s.operation) s.operation = s[oldKey];
+      delete s[oldKey];
+    }
+  }
+
+  /* Supprimer l'ancienne colonne perso de la liste des colonnes */
+  colonnes = colonnes.filter(c => c.key !== oldKey);
+
+  /* S'assurer que la colonne native "operation" est présente dans colonnes */
+  if (!colonnes.find(c => c.key === 'operation')) {
+    const idxEtat = colonnes.findIndex(c => c.key === 'etat');
+    const pos = idxEtat >= 0 ? idxEtat : colonnes.length;
+    colonnes.splice(pos, 0, { key: 'operation', label: oldCol.label, width: oldCol.width || 130, visible: oldCol.visible !== false });
+  }
+}
 window.ouvrirConfigCols = () => {
   let h = `<h3>Colonnes — visibilité &amp; largeur</h3>
     <p style="font-size:.75rem;color:var(--gray-500);margin:-4px 0 8px">Faites glisser ⠿ pour réordonner les colonnes.</p>
