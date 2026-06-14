@@ -519,7 +519,7 @@ function buildRow(p, total, isSub, parentId, lefts, orphanParentName = null) {
   for (let ci = 0; ci < vcols.length; ci++) {
     const c = vcols[ci], ck = c.key;
     h += `<td class="cell ${isSub?'cell-sub':''}"
-      style="position:sticky;left:${lefts[ci]}px;z-index:10;background:${rowBg};${bL}width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`;
+      style="position:sticky;left:${lefts[ci]}px;z-index:15;background:${rowBg};width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`;
 
     if (ck === 'nom') {
       h += `<div style="display:flex;align-items:center;gap:2px;height:100%">

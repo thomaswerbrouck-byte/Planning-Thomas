@@ -359,18 +359,16 @@ body {
 /* ─── Data cells ────────────────────────── */
 .cell {
   height: var(--row-h);
-  border-right:  1px solid var(--gray-200);
-  border-bottom: 1px solid var(--gray-200);
+  /* box-shadow remplace border car border-collapse:collapse efface les bordures sticky */
+  box-shadow: 1px 0 0 var(--gray-200), 0 1px 0 var(--gray-200);
   padding: 1px 3px;
   vertical-align: middle;
   background: white;
-  /* fond opaque obligatoire pour les colonnes sticky */
-  isolation: isolate;
 }
-.cell-sub { background: #f0f9ff !important; border-left: 3px solid #38bdf8; }
-
-/* Séparateur de ligne visible sur toutes les lignes */
-tr { border-bottom: 1px solid var(--gray-200); }
+.cell-sub {
+  background: #f0f9ff !important;
+  box-shadow: 3px 0 0 #38bdf8, 1px 0 0 var(--gray-200), 0 1px 0 var(--gray-200) !important;
+}
 
 .cell input, .cell select {
   width: 100%; height: 26px;
