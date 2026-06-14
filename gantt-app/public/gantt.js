@@ -1209,22 +1209,64 @@ function _renderStats(selectedKeys) {
   const allRows = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
   const nbSubs  = allRows.reduce((s, p) => s + (p.soustaches?.length || 0), 0);
 
-  /* Colonne personnalisée principale (ex: "Opérations") = filtre de base */
+  /* Colonne personnalisée principale (ex: "Opérations") */
   const primaryCustom = colonnes.find(c => !COLS_BUILTIN.has(c.key) && c.visible !== false);
-  /* On ne compte que les tâches ayant une valeur dans cette colonne */
-  const rows  = primaryCustom ? allRows.filter(p => p[primaryCustom.key]) : allRows;
-  const total = rows.length;
+  const primKey = primaryCustom?.key;
 
-  /* Comptage */
+  /* On ne retient que les tâches ayant une valeur dans la colonne principale */
+  const rows = primKey ? allRows.filter(p => p[primKey]) : allRows;
+
+  /* Comptage :
+     - Pour la colonne principale elle-même  → nb de tâches par valeur distincte d'opération
+     - Pour toutes les autres colonnes       → nb d'opérations DISTINCTES par valeur de groupe
+     - Total affiché                         → nb d'opérations distinctes au total
+  */
   const counts = {};
   active.forEach(c => counts[c.key] = {});
-  rows.forEach(p => {
-    active.forEach(c => {
-      const val = c.key === 'etat' ? (p.etat || 'À venir') : p[c.key];
-      if (!val) return;
-      counts[c.key][val] = (counts[c.key][val]||0) + 1;
+
+  if (primKey) {
+    /* Pour chaque groupe (association, attribution, état…) on accumule un Set d'opérations */
+    const sets = {};
+    active.forEach(c => { if (c.key !== primKey) sets[c.key] = {}; });
+
+    rows.forEach(p => {
+      const opVal = p[primKey]; // valeur dans la colonne Opérations
+
+      /* Colonne principale : compte le nb de tâches par opération */
+      if (counts[primKey] !== undefined)
+        counts[primKey][opVal] = (counts[primKey][opVal]||0) + 1;
+
+      /* Autres colonnes : accumule les opérations distinctes par groupe */
+      active.forEach(c => {
+        if (c.key === primKey) return;
+        const grpVal = c.key === 'etat' ? (p.etat || 'À venir') : p[c.key];
+        if (!grpVal) return;
+        if (!sets[c.key][grpVal]) sets[c.key][grpVal] = new Set();
+        sets[c.key][grpVal].add(opVal);
+      });
     });
-  });
+
+    /* Convertir les Sets en nombre d'opérations distinctes */
+    active.forEach(c => {
+      if (c.key === primKey) return;
+      Object.entries(sets[c.key]).forEach(([grpVal, s]) => {
+        counts[c.key][grpVal] = s.size;
+      });
+    });
+
+  } else {
+    /* Pas de colonne perso → comptage simple de tâches */
+    rows.forEach(p => {
+      active.forEach(c => {
+        const val = c.key === 'etat' ? (p.etat || 'À venir') : p[c.key];
+        if (!val) return;
+        counts[c.key][val] = (counts[c.key][val]||0) + 1;
+      });
+    });
+  }
+
+  /* Total = nb d'opérations distinctes */
+  const total = primKey ? new Set(rows.map(p => p[primKey])).size : rows.length;
 
   const bar = (cnt, col, ref) => {
     const pct = ref ? Math.round(cnt/ref*100) : 0;
@@ -1266,7 +1308,7 @@ function _renderStats(selectedKeys) {
   h += `<div style="display:flex;gap:8px;margin-bottom:12px">
     <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:8px 12px;text-align:center;border:1px solid var(--gray-200)">
       <div style="font-size:1.3rem;font-weight:700;color:var(--navy)">${total}</div>
-      <div style="font-size:.7rem;color:var(--gray-500);margin-top:1px">Tâches</div>
+      <div style="font-size:.7rem;color:var(--gray-500);margin-top:1px">${primaryCustom ? esc(primaryCustom.label)+' distinctes' : 'Tâches'}</div>
     </div>
     <div style="flex:1;background:var(--gray-50);border-radius:8px;padding:8px 12px;text-align:center;border:1px solid var(--gray-200)">
       <div style="font-size:1.3rem;font-weight:700;color:#0ea5e9">${nbSubs}</div>
