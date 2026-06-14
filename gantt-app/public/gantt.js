@@ -240,13 +240,19 @@ function valeursFiltrables(key) {
     });
     if (!autresFiltresMatch) continue;
 
-    /* ECO/ASEPTIC : limiter aux tâches qui leur sont attribuées */
+    /* ECO/ASEPTIC : limiter aux tâches qui leur sont attribuées.
+       Si techFilter est vide (premier clic), montrer toutes les valeurs. */
     if (userRole === 'eco' || userRole === 'aseptic') {
       const techFilter = filtres['tech'] || [];
-      if (techFilter.includes(p.tech ?? '')) v.add(String(p[key] ?? ''));
-      p.soustaches?.forEach(s => {
-        if (techFilter.includes(s.tech ?? '')) v.add(String(s[key] ?? ''));
-      });
+      if (!techFilter.length) {
+        v.add(String(p[key] ?? ''));
+        p.soustaches?.forEach(s => v.add(String(s[key] ?? '')));
+      } else {
+        if (techFilter.includes(p.tech ?? '')) v.add(String(p[key] ?? ''));
+        p.soustaches?.forEach(s => {
+          if (techFilter.includes(s.tech ?? '')) v.add(String(s[key] ?? ''));
+        });
+      }
     } else {
       v.add(String(p[key] ?? ''));
       p.soustaches?.forEach(s => v.add(String(s[key] ?? '')));
@@ -988,12 +994,7 @@ document.addEventListener('mouseup', e => {
         const rect       = th.getBoundingClientRect();
         const insertBefore = e.clientX < rect.left + rect.width / 2;
         const [moved]    = colonnes.splice(_colDragIdx, 1);
-        const newTo      = colonnes.indexOf(colonnes.find((_, i) => {
-          /* recalcule l'index après suppression */
-          const origIdx = _colDragIdx <= toIdx ? toIdx - 1 : toIdx;
-          return i === (insertBefore ? origIdx : origIdx + 1) - (_colDragIdx < toIdx ? 0 : 0);
-        }));
-        /* Calcul simple : reconstruire l'index cible après splice */
+        /* Reconstruire l'index cible après splice */
         let dest = toIdx > _colDragIdx ? toIdx - 1 : toIdx;
         if (!insertBefore) dest++;
         colonnes.splice(Math.max(0, dest), 0, moved);
@@ -1595,7 +1596,7 @@ window.ouvrirFiltre = (key, btn) => {
 };
 
 function _saveFiltres() {
-  if (userRole === 'eco') return; // filtre forcé, pas de sauvegarde
+  if (userRole === 'eco' || userRole === 'aseptic') return; // filtre forcé, pas de sauvegarde
   localStorage.setItem('filtres_' + projectId, JSON.stringify(filtres));
 }
 
@@ -1620,8 +1621,6 @@ window._applyRoleFilter = function() {
 
   renderAll();
 };
-/* Alias pour compatibilité */
-window._applyEcoFilter = window._applyRoleFilter;
 
 window.appliquerFiltre = key => {
   const panel = document.getElementById('filtre-panel'); if (!panel) return;

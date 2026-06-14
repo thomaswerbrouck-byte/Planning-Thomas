@@ -304,6 +304,7 @@ body {
   position: sticky; top: 0;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+  cursor: grab;
 }
 .th-col.sortable { cursor: pointer; user-select: none; }
 .th-col.sortable:hover { background: var(--navy-m); }
@@ -561,7 +562,6 @@ tr.row-drag-over td { box-shadow: inset 0 -2px 0 #3b82f6; }
 .col-drag-handle:hover { color: #94a3b8 !important; }
 
 /* ─── Colonnes drag & drop (en-tête Gantt) ─ */
-.th-col { cursor: grab; }
 .th-col:active { cursor: grabbing; }
 .th-col.col-drag-over-left  { box-shadow: -3px 0 0 0 var(--blue) inset; }
 .th-col.col-drag-over-right { box-shadow:  3px 0 0 0 var(--blue) inset; }
