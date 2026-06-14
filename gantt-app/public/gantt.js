@@ -2408,7 +2408,68 @@ function _printRow(p, ji, total, WP, idxDeb, idxFin, isSub, vcols, todayPrintIdx
 ══════════════════════════════════════════════════════ */
 window.ouvrirPredecesseurs = (id) => {
   const task = getById(id); if (!task) return;
-  _renderPredModal(id, '');
+  const current = new Set(task.predecesseurs || []);
+  const fmtD = d => d ? d.split('-').slice(1).reverse().join('/') : '';
+
+  /* Rendu initial de la modale (header + input + conteneur liste) */
+  let h = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <h3 style="margin:0">🔗 Prédécesseurs</h3>
+    <span id="pred-count" style="font-size:.75rem;color:var(--gray-400)">${current.size} lien${current.size>1?'s':''} actif${current.size>1?'s':''}</span>
+  </div>
+  <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:10px">Tâche : <strong>${esc(task.nom)}</strong></p>
+  <div style="display:flex;align-items:center;gap:6px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:7px;padding:4px 9px;margin-bottom:10px">
+    <span style="color:var(--gray-400);font-size:12px">🔍</span>
+    <input id="pred-search" type="text" placeholder="Filtrer par tâche, opération, association…"
+      style="border:none;background:transparent;outline:none;font-size:.8rem;font-family:inherit;flex:1;color:var(--gray-700)">
+  </div>
+  <div id="pred-list" style="max-height:320px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:8px"></div>
+  <div class="m-actions">
+    <button class="btn" onclick="fermerModal()">Annuler</button>
+    <button class="btn btn-primary" onclick="sauverPredecesseurs('${id}')">✓ Enregistrer les liens</button>
+  </div>`;
+
+  ouvrirModal(h);
+
+  /* Fonction interne qui ne met à jour QUE la liste, sans toucher à l'input */
+  function filtrerListe() {
+    const q = (document.getElementById('pred-search')?.value || '').toLowerCase();
+    const options = _predOptions(id).filter(o =>
+      !q || o.nom.toLowerCase().includes(q) || o.operation.toLowerCase().includes(q) || o.client.toLowerCase().includes(q)
+    );
+    const listEl = document.getElementById('pred-list'); if (!listEl) return;
+    if (!options.length) {
+      listEl.innerHTML = `<div style="color:var(--gray-400);font-size:.85rem;text-align:center;padding:20px">Aucune tâche trouvée</div>`;
+      return;
+    }
+    listEl.innerHTML = options.map(opt => {
+      const checked  = current.has(opt.id);
+      const col      = getColor(getById(opt.id));
+      const isCycle  = peutAtteindre(id, opt.id);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--gray-100);${isCycle?'opacity:.4;pointer-events:none':''}">
+        <input type="checkbox" data-predid="${esc(opt.id)}" ${checked?'checked':''} ${isCycle?'disabled':''}
+          onchange="_predUpdateCount()" style="flex-shrink:0;cursor:pointer">
+        <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:${checked?'700':'500'};color:${checked?'var(--navy)':'var(--gray-700)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            ${opt.indent?'<span style="color:#38bdf8;margin-right:3px;font-size:10px">↳</span>':''}${esc(opt.nom)}
+          </div>
+          <div style="font-size:.7rem;color:var(--gray-400);margin-top:1px">
+            ${opt.operation?`<span style="background:var(--gray-100);border-radius:3px;padding:0 4px">${esc(opt.operation)}</span> `:''}
+            ${opt.client?`${esc(opt.client)} · `:''}
+            <span style="color:var(--gray-300)">${fmtD(opt.debut)} → ${fmtD(opt.fin)}</span>
+          </div>
+        </div>
+        ${!isCycle ? `<button onclick="suiteDeDepuis('${id}','${opt.id}')"
+          style="flex-shrink:0;background:var(--blue-l);border:1px solid #bfdbfe;color:var(--blue);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:.72rem;font-weight:600;font-family:inherit;white-space:nowrap">
+          ➡️ Suite de</button>` : `<span style="font-size:.65rem;color:var(--gray-400)">⚠ cycle</span>`}
+      </div>`;
+    }).join('');
+  }
+
+  filtrerListe();
+  const inp = document.getElementById('pred-search');
+  if (inp) { inp.addEventListener('input', filtrerListe); setTimeout(() => inp.focus(), 50); }
 };
 
 function _predOptions(id) {
@@ -2422,68 +2483,11 @@ function _predOptions(id) {
   return options;
 }
 
-function _renderPredModal(id, filtre) {
-  const task    = getById(id); if (!task) return;
-  const current = new Set(task.predecesseurs || []);
-  const q       = filtre.toLowerCase();
-  const options = _predOptions(id).filter(o =>
-    !q || o.nom.toLowerCase().includes(q) || o.operation.toLowerCase().includes(q) || o.client.toLowerCase().includes(q)
-  );
-  const fmtD = d => d ? d.split('-').slice(1).reverse().join('/') : '';
-
-  let h = `
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-    <h3 style="margin:0">🔗 Prédécesseurs</h3>
-    <span style="font-size:.75rem;color:var(--gray-400)">${current.size} lien${current.size>1?'s':''} actif${current.size>1?'s':''}</span>
-  </div>
-  <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:10px">Tâche : <strong>${esc(task.nom)}</strong></p>
-
-  <div style="display:flex;align-items:center;gap:6px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:7px;padding:4px 9px;margin-bottom:10px">
-    <span style="color:var(--gray-400);font-size:12px">🔍</span>
-    <input id="pred-search" type="text" placeholder="Filtrer par tâche, opération, association…" value="${esc(filtre)}"
-      style="border:none;background:transparent;outline:none;font-size:.8rem;font-family:inherit;flex:1;color:var(--gray-700)"
-      oninput="_renderPredModal('${id}',this.value)">
-  </div>
-
-  <div style="max-height:320px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:8px">`;
-
-  if (!options.length) {
-    h += `<div style="color:var(--gray-400);font-size:.85rem;text-align:center;padding:20px">Aucune tâche trouvée</div>`;
-  } else {
-    options.forEach(opt => {
-      const checked   = current.has(opt.id);
-      const predTask  = getById(opt.id);
-      const col       = getColor(predTask);
-      const isCycle   = peutAtteindre(id, opt.id);
-      h += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--gray-100);${isCycle?'opacity:.4;pointer-events:none':''}">
-        <input type="checkbox" data-predid="${esc(opt.id)}" ${checked?'checked':''} ${isCycle?'disabled':''} style="flex-shrink:0;cursor:pointer">
-        <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:.82rem;font-weight:${checked?'700':'500'};color:${checked?'var(--navy)':'var(--gray-700)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-            ${opt.indent?'<span style="color:#38bdf8;margin-right:3px;font-size:10px">↳</span>':''}${esc(opt.nom)}
-          </div>
-          <div style="font-size:.7rem;color:var(--gray-400);margin-top:1px">
-            ${opt.operation?`<span style="background:var(--gray-100);border-radius:3px;padding:0 4px">${esc(opt.operation)}</span> `:''}
-            ${opt.client?`${esc(opt.client)} · `:''}
-            <span style="color:var(--gray-300)">${fmtD(opt.debut)} → ${fmtD(opt.fin)}</span>
-          </div>
-        </div>
-        ${!isCycle ? `<button onclick="suiteDeDepuis('${id}','${opt.id}')" title="Commencer juste après cette tâche"
-          style="flex-shrink:0;background:var(--blue-l);border:1px solid #bfdbfe;color:var(--blue);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:.72rem;font-weight:600;font-family:inherit;white-space:nowrap">
-          ➡️ Suite de</button>` : `<span style="font-size:.65rem;color:var(--gray-400)">⚠ cycle</span>`}
-      </div>`;
-    });
-  }
-
-  h += `</div>
-  <div class="m-actions">
-    <button class="btn" onclick="fermerModal()">Annuler</button>
-    <button class="btn btn-primary" onclick="sauverPredecesseurs('${id}')">✓ Enregistrer les liens</button>
-  </div>`;
-
-  ouvrirModal(h);
-  setTimeout(() => document.getElementById('pred-search')?.focus(), 50);
-}
+window._predUpdateCount = () => {
+  const n = document.querySelectorAll('[data-predid]:checked').length;
+  const el = document.getElementById('pred-count');
+  if (el) el.textContent = `${n} lien${n>1?'s':''} actif${n>1?'s':''}`;
+};
 
 window.sauverPredecesseurs = (id) => {
   const task = getById(id); if (!task) return;
