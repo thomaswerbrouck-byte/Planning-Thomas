@@ -160,6 +160,8 @@ var ganttApp = {
     initAnneeSelect();
     initJours();
     applyRowH();
+    /* Appliquer le filtre rôle AVANT le premier rendu pour éviter le flash */
+    if (userRole === 'eco' || userRole === 'aseptic') window._applyRoleFilter?.();
     renderAll();
     if (!ganttApp._bound) { bindEvents(); ganttApp._bound = true; }
     setTimeout(scrollAujourdhui, 50);
