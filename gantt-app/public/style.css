@@ -626,9 +626,9 @@ body.read-only input,
 body.read-only select { pointer-events: none; background: transparent !important; border-color: transparent !important; }
 
 /* Exceptions : modale (impression, stats, etc.) toujours interactive */
-body.read-only .modal input,
-body.read-only .modal select,
-body.read-only .modal button { pointer-events: auto; background: revert !important; border-color: revert !important; }
+body.read-only .modal input  { pointer-events: auto !important; background: white !important; border-color: var(--gray-300) !important; color: var(--gray-900) !important; }
+body.read-only .modal select { pointer-events: auto !important; background: white !important; border-color: var(--gray-300) !important; color: var(--gray-900) !important; }
+body.read-only .modal button { pointer-events: auto !important; opacity: 1 !important; }
 
 /* Resize colonnes autorisé pour tous */
 body.read-only .resize-handle { pointer-events: auto; display: block !important; }

@@ -1824,20 +1824,26 @@ document.addEventListener('keydown', e => {
   }
   if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
     e.preventDefault();
-    /* Utiliser la plage visible actuelle comme valeur par défaut */
+    /* Calculer la plage de jours actuellement visible dans le Gantt */
+    let d = ANNEE + '-01-01', f = ANNEE + '-12-31';
     if (jours.length) {
-      const d = jours[0].clef, f = jours[jours.length-1].clef;
-      /* Pré-remplir les champs et ouvrir la modale */
-      ouvrirExportPDF();
-      setTimeout(() => {
-        const dEl = document.getElementById('pdfD');
-        const fEl = document.getElementById('pdfF');
-        if (dEl) dEl.value = d;
-        if (fEl) fEl.value = f;
-      }, 50);
-    } else {
-      ouvrirExportPDF();
+      const wrap       = document.getElementById('gantt-wrap');
+      const scrollLeft = wrap ? wrap.scrollLeft : 0;
+      const visW       = wrap ? wrap.clientWidth : 800;
+      const colsW      = frozenW();
+      const ganttScroll = Math.max(0, scrollLeft);
+      const firstIdx   = Math.max(0, Math.floor(ganttScroll / W));
+      const lastIdx    = Math.min(jours.length - 1, Math.floor((ganttScroll + visW - colsW) / W));
+      d = jours[firstIdx]?.clef  || d;
+      f = jours[lastIdx]?.clef   || f;
     }
+    ouvrirExportPDF();
+    setTimeout(() => {
+      const dEl = document.getElementById('pdfD');
+      const fEl = document.getElementById('pdfF');
+      if (dEl) dEl.value = d;
+      if (fEl) fEl.value = f;
+    }, 50);
   }
 });
 
