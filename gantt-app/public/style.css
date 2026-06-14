@@ -588,6 +588,10 @@ tr.row-drag-over td { box-shadow: inset 0 -2px 0 #3b82f6; }
 .toast { padding: 9px 20px; border-radius: 8px; font-size: .83rem; background: var(--gray-900); color: white; box-shadow: 0 4px 16px rgba(0,0,0,.2); animation: pop .2s; }
 .toast.ok { background: var(--green); }
 .toast.err { background: var(--red); }
+/* ─── Recherche ─────────────────────────── */
+#search-wrap:focus-within { border-color: var(--blue) !important; box-shadow: 0 0 0 2px rgba(37,99,235,.12); }
+#search-input::placeholder { color: var(--gray-400); }
+
 @keyframes pop  { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 @keyframes spin  { to { transform: rotate(360deg); } }
 @keyframes pulse { 0%,100% { opacity:.2; transform:scale(.7); } 50% { opacity:1; transform:scale(1); } }

@@ -66,6 +66,7 @@ var colResizing = null, colResX0 = 0, colResW0 = 0;
 var sortCol = null, sortDir = 1;
 var collapsed = {};
 var filtres = {};
+var searchQuery = '';
 
 var PALETTES = [
   /* Bleus   */ '#1d4ed8','#2563eb','#3b82f6','#60a5fa','#93c5fd','#0ea5e9','#38bdf8','#7dd3fc',
@@ -114,10 +115,15 @@ var ganttApp = {
   init(data, userPseudo, pid) {
     pseudo    = userPseudo;
     projectId = pid || 'default';
-    filtres   = {};
-    sortCol   = 'debut'; // tri par défaut : date de début
-    sortDir   = 1;
-    collapsed = {};
+    filtres     = {};
+    searchQuery = '';
+    sortCol     = 'debut';
+    sortDir     = 1;
+    collapsed   = {};
+    const si = document.getElementById('search-input');
+    if (si) si.value = '';
+    const sc = document.getElementById('search-clear');
+    if (sc) sc.style.display = 'none';
 
     /* Restaurer les filtres et le tri sauvegardés pour ce planning */
     try {
@@ -192,8 +198,10 @@ function normalizeTask(t) {
   }
   if (!t.debut) t.debut = new Date().toISOString().slice(0, 10);
   if (!t.fin)   t.fin   = t.debut;
-  if (!t.predecesseurs) t.predecesseurs = [];
+  if (!t.predecesseurs)  t.predecesseurs  = [];
   if (t.notes === undefined) t.notes = '';
+  if (!t.commentaires)   t.commentaires   = [];
+  if (!t.historique)     t.historique     = [];
   return t;
 }
 
@@ -282,8 +290,17 @@ function cmpSort(a, b) {
   return va < vb ? -sortDir : va > vb ? sortDir : 0;
 }
 
+function matchSearch(p) {
+  if (!searchQuery) return true;
+  const q = searchQuery.toLowerCase();
+  const champs = [p.nom, p.client, p.operation, p.tech, p.etat];
+  if (champs.some(c => c?.toLowerCase().includes(q))) return true;
+  if (p.soustaches?.some(s => [s.nom, s.client, s.operation, s.tech].some(c => c?.toLowerCase().includes(q)))) return true;
+  return false;
+}
+
 function projFiltresTries() {
-  let res = projets.filter(p => matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s)));
+  let res = projets.filter(p => (matchFiltres(p) || p.soustaches?.some(s => matchFiltres(s))) && matchSearch(p));
   if (sortCol) res.sort(cmpSort);
   return res;
 }
@@ -516,7 +533,7 @@ function buildRow(p, total, isSub, parentId, lefts, orphanParentName = null) {
           : `<span style="width:14px;flex-shrink:0"></span>`;
         h += `<input type="text" value="${esc(p.nom)}" style="flex:1;min-width:0" onchange="upd('${p.id}','nom',this.value)">`;
         h += `<div class="row-actions">
-          ${p.notes?`<button class="row-btn row-btn-notes has-note" onclick="ouvrirNotes('${p.id}')" title="Voir la note">💬</button>`:''}
+          ${(p.commentaires?.length||p.notes)?`<button class="row-btn row-btn-notes has-note" onclick="ouvrirCommentaires('${p.id}')" title="Voir les commentaires">💬${p.commentaires?.length>0?`<span style="font-size:.6rem;font-weight:700;margin-left:1px">${p.commentaires.length}</span>`:''}</button>`:''}
           <button class="row-btn row-btn-menu${p.predecesseurs?.length?' has-pred':''}" onclick="toggleRowMenu(event,'${p.id}',false,'')" title="Actions">⋮</button>
         </div>`;
       } else {
@@ -528,7 +545,7 @@ function buildRow(p, total, isSub, parentId, lefts, orphanParentName = null) {
         }
         h += `<input type="text" value="${esc(p.nom)}" style="flex:1;min-width:0" onchange="upd('${p.id}','nom',this.value)">`;
         h += `<div class="row-actions">
-          ${p.notes?`<button class="row-btn row-btn-notes has-note" onclick="ouvrirNotes('${p.id}')" title="Voir la note">💬</button>`:''}
+          ${(p.commentaires?.length||p.notes)?`<button class="row-btn row-btn-notes has-note" onclick="ouvrirCommentaires('${p.id}')" title="Voir les commentaires">💬${p.commentaires?.length>0?`<span style="font-size:.6rem;font-weight:700;margin-left:1px">${p.commentaires.length}</span>`:''}</button>`:''}
           <button class="row-btn row-btn-menu${p.predecesseurs?.length?' has-pred':''}" onclick="toggleRowMenu(event,'${p.id}',true,'${parentId}')" title="Actions">⋮</button>
         </div>`;
       }
@@ -1205,8 +1222,11 @@ window.toggleRowMenu = (e, id, isSub, parentId) => {
     items.push(`<button class="rmenu-item radd" onclick="ajouterSoustache('${id}');${_c}">
       <span class="rmenu-ico">＋</span>Ajouter une sous-tâche</button>`);
   }
-  items.push(`<button class="rmenu-item rnote" onclick="ouvrirNotes('${id}');${_c}">
-    <span class="rmenu-ico">💬</span>Notes${task?.notes ? ' <span style="width:6px;height:6px;border-radius:50%;background:#0369a1;display:inline-block;margin-left:4px;vertical-align:middle"></span>' : ''}</button>`);
+  const nbCmt = (task?.commentaires?.length || 0) + (task?.notes ? 1 : 0);
+  items.push(`<button class="rmenu-item rnote" onclick="ouvrirCommentaires('${id}');${_c}">
+    <span class="rmenu-ico">💬</span>Commentaires${nbCmt ? ` <span style="background:#0369a1;color:white;border-radius:10px;font-size:.65rem;font-weight:700;padding:1px 5px;margin-left:3px">${nbCmt}</span>` : ''}</button>`);
+  items.push(`<button class="rmenu-item" onclick="ouvrirHistoriqueTache('${id}');${_c}">
+    <span class="rmenu-ico">🕐</span>Historique</button>`);
   items.push(`<button class="rmenu-item rdup" onclick="${isSub ? `dupliquerSoustache('${parentId}','${id}')` : `dupliquer('${id}')`};${_c}">
     <span class="rmenu-ico">⧉</span>Dupliquer</button>`);
   items.push(`<button class="rmenu-item rlink${hasPred ? ' active' : ''}" onclick="ouvrirPredecesseurs('${id}');${_c}">
@@ -1235,24 +1255,46 @@ window.toggleRowMenu = (e, id, isSub, parentId) => {
   }, 10);
 };
 
+/* Labels lisibles pour l'historique */
+const CHAMP_LABELS = { nom:'Tâche', client:'Association', operation:'Opération', debut:'Début', fin:'Fin', tech:'Attribution', etat:'État' };
+
 window.upd = (id, champ, val) => {
   const p = getById(id); if (!p) return;
+  const ancien = p[champ];
   p[champ] = val;
   if (p.debut > p.fin) p.fin = p.debut;
   if (champ === 'fin' || champ === 'debut') propagerDates(id);
 
+  /* Enregistrer dans l'historique de la tâche (sauf nom pour éviter le bruit) */
+  if (champ !== 'nom' && String(ancien ?? '') !== String(val ?? '')) {
+    if (!p.historique) p.historique = [];
+    p.historique.unshift({
+      champ, label: CHAMP_LABELS[champ] || champ,
+      avant: String(ancien ?? ''), apres: String(val ?? ''),
+      par: pseudo, date: new Date().toISOString()
+    });
+    if (p.historique.length > 50) p.historique.length = 50; // garder 50 entrées max
+  }
+
   /* Propagation aux sous-tâches si c'est une tâche parente */
   const parent = projets.find(x => x.id === id);
   if (parent?.soustaches?.length) {
-    /* État "Terminé" → toutes les sous-tâches passent à Terminé */
     if (champ === 'etat' && val === 'Terminé')
       parent.soustaches.forEach(s => { s.etat = 'Terminé'; });
-    /* Colonne Opérations → toutes les sous-tâches héritent */
     if (champ === 'operation')
       parent.soustaches.forEach(s => { s.operation = val; });
   }
 
   renderAll(); scheduleSave();
+};
+
+window.doSearch = (q) => {
+  searchQuery = q.trim();
+  const clear = document.getElementById('search-clear');
+  const wrap  = document.getElementById('search-wrap');
+  if (clear) clear.style.display = searchQuery ? '' : 'none';
+  if (wrap)  wrap.style.borderColor = searchQuery ? 'var(--blue)' : 'var(--gray-200)';
+  renderAll();
 };
 
 window.scrollAujourdhui = () => {
@@ -1271,31 +1313,136 @@ window.scrollMoisEnCours = () => {
 };
 
 /* ── Notes ── */
-window.ouvrirNotes = (id) => {
+/* ── Commentaires ── */
+window.ouvrirNotes = (id) => ouvrirCommentaires(id); // alias de compatibilité
+
+window.ouvrirCommentaires = (id) => {
   const task = getById(id); if (!task) return;
-  const ro = userRole !== 'admin';
-  ouvrirModal(`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-      <span style="font-size:1.2rem">💬</span>
-      <h3 style="margin:0">Notes</h3>
-    </div>
-    <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:12px;padding-left:2px">${esc(task.nom)}</p>
-    <textarea id="notes-ta" rows="6" ${ro?'readonly':''}
-      style="width:100%;padding:10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.88rem;font-family:inherit;resize:vertical;outline:none;transition:border-color .2s;${ro?'background:var(--gray-50);color:var(--gray-600)':''}"
-      onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--gray-200)'"
-      placeholder="Saisissez vos notes ici…">${esc(task.notes||'')}</textarea>
-    <div class="m-actions">
-      <button class="btn" onclick="fermerModal()">${ro?'Fermer':'Annuler'}</button>
-      ${ro?'':'<button class="btn btn-primary" onclick="sauverNotes(\''+id+'\')">Enregistrer</button>'}
-    </div>`);
-  if (!ro) setTimeout(() => { const ta = document.getElementById('notes-ta'); ta?.focus(); ta?.setSelectionRange(ta.value.length, ta.value.length); }, 50);
+  if (!task.commentaires) task.commentaires = [];
+  /* Migration : ancienne note texte → premier commentaire */
+  if (task.notes && task.commentaires.length === 0) {
+    task.commentaires.push({ texte: task.notes, auteur: '(note précédente)', date: new Date(0).toISOString() });
+    task.notes = '';
+  }
+  _renderCommentaires(id);
 };
 
-window.sauverNotes = (id) => {
+function _renderCommentaires(id) {
   const task = getById(id); if (!task) return;
-  task.notes = document.getElementById('notes-ta')?.value || '';
-  fermerModal(); renderAll(); scheduleSave();
-  toast(task.notes ? '💬 Note enregistrée' : 'Note supprimée', 'ok');
+  const ro = userRole !== 'admin';
+  const fmtDate = d => new Date(d).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  let h = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:1.2rem">💬</span>
+      <h3 style="margin:0">Commentaires</h3>
+      ${task.commentaires.length ? `<span style="background:var(--blue);color:white;border-radius:10px;font-size:.7rem;font-weight:700;padding:1px 7px">${task.commentaires.length}</span>` : ''}
+    </div>
+    <button onclick="ouvrirHistoriqueTache('${id}')" style="background:none;border:1px solid var(--gray-200);border-radius:6px;padding:3px 9px;font-size:.75rem;cursor:pointer;color:var(--gray-500);font-family:inherit">🕐 Historique</button>
+  </div>
+  <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:10px">${esc(task.nom)}</p>`;
+
+  /* Liste des commentaires */
+  if (task.commentaires.length === 0) {
+    h += `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:.85rem">Aucun commentaire pour l'instant</div>`;
+  } else {
+    h += `<div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:12px;padding-right:2px">`;
+    task.commentaires.forEach((c, i) => {
+      const isMe = c.auteur === pseudo;
+      h += `<div style="background:${isMe?'#eff6ff':'var(--gray-50)'};border:1px solid ${isMe?'#bfdbfe':'var(--gray-200)'};border-radius:10px;padding:10px 12px;position:relative">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-weight:700;font-size:.78rem;color:${isMe?'var(--blue)':'var(--gray-700)'}">${esc(c.auteur)}</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:.7rem;color:var(--gray-400)">${fmtDate(c.date)}</span>
+            ${!ro && (isMe || userRole==='admin') ? `<button onclick="supprimerCommentaire('${id}',${i})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:11px;padding:0;line-height:1" title="Supprimer">✕</button>` : ''}
+          </div>
+        </div>
+        <div style="font-size:.85rem;color:var(--gray-700);white-space:pre-wrap;word-break:break-word">${esc(c.texte)}</div>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+
+  /* Saisie nouveau commentaire */
+  if (!ro) {
+    h += `<div style="border-top:1px solid var(--gray-200);padding-top:10px">
+      <textarea id="cmt-ta" rows="3" placeholder="Ajouter un commentaire…"
+        style="width:100%;padding:9px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.85rem;font-family:inherit;resize:none;outline:none;transition:border-color .2s"
+        onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--gray-200)'"
+        onkeydown="if(e.ctrlKey&&e.key==='Enter')ajouterCommentaire('${id}')"></textarea>
+      <div class="m-actions" style="margin-top:8px">
+        <button class="btn" onclick="fermerModal()">Fermer</button>
+        <button class="btn btn-primary" onclick="ajouterCommentaire('${id}')">Envoyer</button>
+      </div>
+    </div>`;
+  } else {
+    h += `<div class="m-actions"><button class="btn" onclick="fermerModal()">Fermer</button></div>`;
+  }
+
+  ouvrirModal(h);
+  setTimeout(() => document.getElementById('cmt-ta')?.focus(), 50);
+}
+
+window.ajouterCommentaire = (id) => {
+  const task = getById(id); if (!task) return;
+  const texte = document.getElementById('cmt-ta')?.value?.trim();
+  if (!texte) { toast('Commentaire vide', 'err'); return; }
+  if (!task.commentaires) task.commentaires = [];
+  task.commentaires.push({ texte, auteur: pseudo, date: new Date().toISOString() });
+  renderAll(); scheduleSave();
+  _renderCommentaires(id);
+  toast('💬 Commentaire ajouté', 'ok');
+};
+
+window.supprimerCommentaire = (id, idx) => {
+  const task = getById(id); if (!task) return;
+  task.commentaires.splice(idx, 1);
+  renderAll(); scheduleSave();
+  _renderCommentaires(id);
+};
+
+/* ── Historique par tâche ── */
+window.ouvrirHistoriqueTache = (id) => {
+  const task = getById(id); if (!task) return;
+  const hist = task.historique || [];
+  const fmtDate = d => new Date(d).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const etatCol = v => { const c = etatColor(v); return `<span style="color:${c};font-weight:600">${esc(v)||'—'}</span>`; };
+
+  let h = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+    <span style="font-size:1.2rem">🕐</span>
+    <h3 style="margin:0">Historique</h3>
+  </div>
+  <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:10px">${esc(task.nom)}</p>`;
+
+  if (!hist.length) {
+    h += `<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:.85rem">Aucune modification enregistrée</div>`;
+  } else {
+    h += `<div style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">`;
+    hist.forEach(e => {
+      h += `<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 10px;background:var(--gray-50);border-radius:8px;border:1px solid var(--gray-200)">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+            <span style="font-weight:700;font-size:.78rem;color:var(--navy)">${esc(e.par)}</span>
+            <span style="font-size:.72rem;color:var(--gray-400)">a modifié</span>
+            <span style="font-size:.75rem;font-weight:600;color:var(--gray-700);background:var(--gray-200);padding:1px 6px;border-radius:4px">${esc(e.label)}</span>
+            <span style="font-size:.7rem;color:var(--gray-400);margin-left:auto">${fmtDate(e.date)}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:.8rem;flex-wrap:wrap">
+            <span style="color:var(--gray-500);text-decoration:line-through;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.avant)}">${e.champ==='etat'?etatCol(e.avant):esc(e.avant)||'<em style="color:var(--gray-300)">vide</em>'}</span>
+            <span style="color:var(--gray-400)">→</span>
+            <span style="font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.apres)}">${e.champ==='etat'?etatCol(e.apres):esc(e.apres)||'<em style="color:var(--gray-300)">vide</em>'}</span>
+          </div>
+        </div>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+
+  h += `<div class="m-actions" style="margin-top:12px">
+    <button class="btn" onclick="ouvrirCommentaires('${id}')">← Commentaires</button>
+    <button class="btn btn-primary" onclick="fermerModal()">Fermer</button>
+  </div>`;
+  ouvrirModal(h);
 };
 
 /* ── Dérouler / Replier toutes les sous-tâches ── */
