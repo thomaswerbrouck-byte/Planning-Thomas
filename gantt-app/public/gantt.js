@@ -2053,7 +2053,7 @@ function _buildPrintWindow(d, f, ji, fmt = 'A4') {
   const win = window.open('','_print','width=1400,height=900');
   let ph = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Planning — ${d} / ${f}</title><style>${css}</style></head><body>`;
   ph += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:5px;border-bottom:2px solid #1e3a8a">
-    <img src="${window.location.origin}/LOGO_HEMOTECH_POLLET-05.jpg" alt="Hemotech" style="height:36px;object-fit:contain">
+    <img src="${window.location.origin}/logo.jpg" alt="Hemotech" style="height:36px;object-fit:contain">
     <div style="text-align:center">
       <div style="font-size:12px;font-weight:700;color:#1e3a8a">Planning — Installation</div>
       <div style="font-size:8px;color:#64748b;margin-top:2px">Période : ${d.split('-').reverse().join('/')} → ${f.split('-').reverse().join('/')} &nbsp;|&nbsp; ${total} jours &nbsp;|&nbsp; ${ordered.length} opération${ordered.length>1?'s':''}</div>
