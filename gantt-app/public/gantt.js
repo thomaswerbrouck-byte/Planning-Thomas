@@ -868,14 +868,19 @@ function bindEvents() {
       if (p) {
         const dC = Math.round((e.clientX - dragX0) / W);
         if (dragMode === 'move') {
-          const dur   = dragIdxF0 - dragIdxD0;
-          const newD  = Math.max(0, Math.min(jours.length-1-dur, dragIdxD0+dC));
-          const delta = newD - dragIdxD0;
+          const dur    = dragIdxF0 - dragIdxD0;
+          const newD   = Math.max(0, Math.min(jours.length-1-dur, dragIdxD0+dC));
+          const delta  = newD - dragIdxD0;
+          const oldDeb = p.debut, oldFin = p.fin;
           p.debut = dateFromIdx(newD); p.fin = dateFromIdx(newD+dur);
           if (delta !== 0) deplacerSuccesseurs(dragPid, delta);
+          /* Enregistrer dans l'historique si déplacement réel */
+          if (delta !== 0) _enregHistoDrag(p, oldDeb, oldFin, p.debut, p.fin);
         } else {
+          const oldFin = p.fin;
           p.fin = dateFromIdx(Math.max(dragIdxD0, Math.min(jours.length-1, dragIdxF0+dC)));
           propagerDates(dragPid);
+          if (p.fin !== oldFin) _enregHistoDrag(p, p.debut, oldFin, p.debut, p.fin);
         }
       }
       dragPid = null; dragMode = null; renderAll(); scheduleSave();
@@ -1127,6 +1132,19 @@ function addDays(dateStr, n) {
 }
 function daysBetween(d1, d2) {
   return Math.max(0, Math.round((new Date(d2) - new Date(d1)) / 86400000));
+}
+
+/* ── Enregistrement historique pour les déplacements de barres ── */
+function _enregHistoDrag(p, oldDeb, oldFin, newDeb, newFin) {
+  if (!p.historique) p.historique = [];
+  const fmt = d => d ? d.split('-').reverse().join('/') : '';
+  p.historique.unshift({
+    champ: 'deplacement', label: 'Déplacement',
+    avant: `${fmt(oldDeb)} → ${fmt(oldFin)}`,
+    apres: `${fmt(newDeb)} → ${fmt(newFin)}`,
+    par: pseudo, date: new Date().toISOString()
+  });
+  if (p.historique.length > 50) p.historique.length = 50;
 }
 
 /* ── Auto-scheduling : pousse les successeurs en cascade ── */
@@ -1986,19 +2004,87 @@ window.toggleHistory = async (force) => {
   if (open) await chargerHistorique();
 };
 
+/* Onglet actif de l'historique global */
+let _histTab = 'changes';
+
+window.histGlobalTab = (tab) => {
+  _histTab = tab;
+  document.querySelectorAll('.hg-tab').forEach(b => {
+    const active = b.dataset.tab === tab;
+    b.style.borderBottomColor = active ? 'var(--blue)' : 'transparent';
+    b.style.color = active ? 'var(--blue)' : 'var(--gray-500)';
+  });
+  document.getElementById('hg-changes').style.display = tab === 'changes' ? '' : 'none';
+  document.getElementById('hg-saves').style.display   = tab === 'saves'   ? '' : 'none';
+};
+
 async function chargerHistorique() {
   const list = document.getElementById('history-list');
-  list.innerHTML = `<div style="padding:16px;color:var(--gray-500);font-size:.85rem">Chargement…</div>`;
-  const items = await fetch(`/api/projects/${projectId}/history`).then(r => r.json());
-  if (!items.length) { list.innerHTML = `<div style="padding:16px;color:var(--gray-500);font-size:.85rem">Aucun historique</div>`; return; }
-  list.innerHTML = '';
-  items.forEach(item => {
-    const d = document.createElement('div');
-    d.className = 'h-item';
-    d.innerHTML = `<div class="h-by">Par ${esc(item.saved_by)}</div><div class="h-date">${new Date(item.saved_at).toLocaleString('fr-FR')}</div>`;
-    d.onclick = () => restaurerVersion(item.id);
-    list.appendChild(d);
-  });
+  const fmtD = d => new Date(d).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+  /* Onglets */
+  list.innerHTML = `
+    <div style="display:flex;border-bottom:2px solid var(--gray-200);margin-bottom:8px">
+      <button class="hg-tab" data-tab="changes" onclick="histGlobalTab('changes')"
+        style="flex:1;padding:6px;font-size:.75rem;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--blue);margin-bottom:-2px;color:var(--blue);font-family:inherit">
+        🔄 Modifications
+      </button>
+      <button class="hg-tab" data-tab="saves" onclick="histGlobalTab('saves')"
+        style="flex:1;padding:6px;font-size:.75rem;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--gray-500);font-family:inherit">
+        💾 Sauvegardes
+      </button>
+    </div>
+    <div id="hg-changes"></div>
+    <div id="hg-saves" style="display:none"><div style="padding:8px;color:var(--gray-500);font-size:.82rem">Chargement…</div></div>`;
+
+  /* ── Onglet Modifications : collecter l'historique de toutes les tâches ── */
+  const allChanges = [];
+  for (const p of projets) {
+    const taches = [p, ...(p.soustaches||[])];
+    for (const t of taches) {
+      for (const h of (t.historique||[])) {
+        allChanges.push({ ...h, tacheNom: t.nom, tacheId: t.id });
+      }
+    }
+  }
+  allChanges.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  const changesEl = document.getElementById('hg-changes');
+  if (!allChanges.length) {
+    changesEl.innerHTML = `<div style="padding:16px;color:var(--gray-500);font-size:.82rem;text-align:center">Aucune modification enregistrée</div>`;
+  } else {
+    changesEl.innerHTML = allChanges.slice(0, 100).map(h => `
+      <div class="h-item" style="cursor:default">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <span style="font-weight:700;font-size:.78rem;color:var(--navy)">${esc(h.par)}</span>
+          <span style="font-size:.7rem;color:var(--gray-400)">${fmtD(h.date)}</span>
+        </div>
+        <div style="font-size:.75rem;color:var(--gray-500);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(h.tacheNom)}">📌 ${esc(h.tacheNom)}</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:.75rem;flex-wrap:wrap">
+          <span style="background:var(--gray-200);border-radius:4px;padding:1px 5px;color:var(--gray-700)">${esc(h.label)}</span>
+          <span style="color:var(--gray-400);text-decoration:line-through;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.avant)||'—'}</span>
+          <span style="color:var(--gray-400)">→</span>
+          <span style="font-weight:600;color:var(--gray-700);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.apres)||'—'}</span>
+        </div>
+      </div>`).join('');
+  }
+
+  /* ── Onglet Sauvegardes : snapshots serveur ── */
+  try {
+    const saves = await fetch(`/api/projects/${projectId}/history`).then(r => r.json());
+    const savesEl = document.getElementById('hg-saves');
+    if (!saves.length) {
+      savesEl.innerHTML = `<div style="padding:16px;color:var(--gray-500);font-size:.82rem;text-align:center">Aucune sauvegarde</div>`;
+    } else {
+      savesEl.innerHTML = saves.map(item => `
+        <div class="h-item" onclick="restaurerVersion(${item.id})" title="Cliquer pour restaurer">
+          <div class="h-by">Par ${esc(item.saved_by)}</div>
+          <div class="h-date">${new Date(item.saved_at).toLocaleString('fr-FR')}</div>
+        </div>`).join('');
+    }
+  } catch(e) {
+    document.getElementById('hg-saves').innerHTML = `<div style="padding:16px;color:var(--red);font-size:.82rem">Erreur de chargement</div>`;
+  }
 }
 
 async function restaurerVersion(hid) {
