@@ -2040,8 +2040,10 @@ function _printRow(p, ji, total, WP, idxDeb, idxFin, isSub, vcols) {
     else if(ck==='client')h+=`<span style="color:#64748b">${esc(p.client)}</span>`;
     else if(ck==='debut')h+=`<span>${p.debut.split('-').slice(1).reverse().join('/')}</span>`;
     else if(ck==='fin')  h+=`<span>${p.fin  .split('-').slice(1).reverse().join('/')}</span>`;
-    else if(ck==='tech') h+=`<span style="color:${col};font-weight:600">${esc(p.tech)}</span>`;
-    else if(ck==='etat') h+=`<span style="color:${ec};font-weight:600">${esc(p.etat||'À venir')}</span>`;
+    else if(ck==='tech')      h+=`<span style="color:${col};font-weight:600">${esc(p.tech)}</span>`;
+    else if(ck==='etat')      h+=`<span style="color:${ec};font-weight:600">${esc(p.etat||'À venir')}</span>`;
+    else if(ck==='operation') h+=`<span>${esc(p.operation||'')}</span>`;
+    else                      h+=`<span>${esc(p[ck]||'')}</span>`;
     h+='</td>';
   }
   h+=`<td colspan="${total}" style="position:relative;padding:0;height:${rowH}px;border-bottom:0.5px solid #e2e8f0;overflow:visible;background:white">`;
